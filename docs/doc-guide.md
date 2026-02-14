@@ -1,5 +1,13 @@
 # Doc Guide
 
+## Copyright
+
+(c) Copyright 2026 Warwick Molloy.
+Contribution to this project is supported and contributors will be recognised.
+Created by Warwick Molloy Feb 2026.
+
+## Format
+
 Markdown is a text file format that should be as readable as a text file
 and only made "nicer" to read when rendered as HTML or other manner.
 
