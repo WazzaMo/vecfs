@@ -1,0 +1,28 @@
+[project]
+name = "vecfs-embed"
+version = "0.1.0"
+description = "Model-agnostic embedding script for VecFS sparse vector storage."
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic-ai-slim[sentence-transformers]",
+]
+
+[project.optional-dependencies]
+openai = ["pydantic-ai-slim[openai]"]
+google = ["pydantic-ai-slim[google]"]
+cohere = ["pydantic-ai-slim[cohere]"]
+voyageai = ["pydantic-ai-slim[voyageai]"]
+all = [
+    "pydantic-ai-slim[openai]",
+    "pydantic-ai-slim[google]",
+    "pydantic-ai-slim[cohere]",
+    "pydantic-ai-slim[voyageai]",
+]
+dev = ["pytest", "pytest-asyncio"]
+
+[project.scripts]
+vecfs-embed = "vecfs_embed.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
