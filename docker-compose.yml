@@ -9,5 +9,12 @@ services:
       - ./test-logs:/app/logs
     environment:
       - VECFS_FILE=/app/data/test-vecfs-data.jsonl
-    # Run the integration test suite
-    command: npm run test:integration
+  http-integration-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.integration
+    volumes:
+      - ./test-logs:/app/logs
+    environment:
+      - VECFS_FILE=/app/data/http-test-vecfs-data.jsonl
+    command: npm run test:http

@@ -58,6 +58,8 @@ To start the VecFS MCP server (Stdio transport):
 npm start
 ```
 
+For HTTP transport, see [Server Connection Guide](docs/mcp-server-connections.md).
+
 ## Configuration
 
 By default, VecFS stores data in a file named `vecfs-data.jsonl` in the current working directory. You can override this by setting the `VECFS_FILE` environment variable:

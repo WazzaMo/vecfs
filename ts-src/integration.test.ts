@@ -3,6 +3,41 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "fs/promises";
 import * as path from "path";
 
+// Helper function for text-to-vector mock
+function mockEmbed(text: string): Record<string, number> {
+  const vector: Record<string, number> = {};
+  // Normalize and split into words
+  const words = text.toLowerCase().replace(/[^\w\s]/g, "").split(/\s+/).filter(w => w.length > 2);
+  
+  if (words.length === 0) return {};
+
+  for (const word of words) {
+    // Simple hash to map words to dimensions 0-99
+    let hash = 0;
+    for (let i = 0; i < word.length; i++) {
+      hash = ((hash << 5) - hash) + word.charCodeAt(i);
+      hash |= 0; // Convert to 32bit integer
+    }
+    const dim = Math.abs(hash) % 100;
+    vector[dim.toString()] = (vector[dim.toString()] || 0) + 1;
+  }
+  
+  // L2 Normalize
+  let sumSq = 0;
+  for (const k in vector) {
+    sumSq += vector[k] * vector[k];
+  }
+  const norm = Math.sqrt(sumSq);
+  
+  if (norm > 0) {
+    for (const k in vector) {
+      vector[k] /= norm;
+    }
+  }
+  
+  return vector;
+}
+
 // Define message types for MCP protocol
 interface JSONRPCRequest {
   jsonrpc: "2.0";
@@ -234,6 +269,126 @@ describe("MCP Integration Test", () => {
      const content = JSON.parse(searchResult.content[0].text);
      expect(content).toHaveLength(1);
      expect(content[0].id).toBe(persistId);
+  });
+
+  it("should index and retrieve real documentation", async () => {
+    // 1. Read all markdown files from docs/
+    const docsDir = path.join(process.cwd(), "docs");
+    const files = await fs.readdir(docsDir);
+    const mdFiles = files.filter(f => f.endsWith(".md"));
+    
+    for (const file of mdFiles) {
+      const content = await fs.readFile(path.join(docsDir, file), "utf-8");
+      // Split by double newline to simulate paragraphs/chunks
+      const chunks = content.split("\n\n").filter(c => c.trim().length > 20);
+      
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        // Use the global mockEmbed function
+        const vector = mockEmbed(chunk);
+        
+        // Skip empty vectors
+        if (Object.keys(vector).length === 0) continue;
+
+        await sendRequest("tools/call", {
+          name: "memorize",
+          arguments: {
+            id: `${file}-chunk-${i}`,
+            text: chunk,
+            vector: vector,
+            metadata: { source: file }
+          }
+        });
+      }
+    }
+    
+    // 2. Search for "sparse vector"
+    const queryText = "sparse vector storage efficiency";
+    const queryVector = mockEmbed(queryText);
+    
+    const searchResult = await sendRequest("tools/call", {
+      name: "search",
+      arguments: {
+        vector: queryVector,
+        limit: 3
+      }
+    });
+    
+    const content = JSON.parse(searchResult.content[0].text);
+    //console.log("Top results for 'sparse vector storage efficiency':");
+    //content.forEach((r: any) => console.log(`- [${r.similarity.toFixed(4)}] ${r.metadata.source}: ${r.metadata.text.substring(0, 50)}...`));
+    
+    expect(content.length).toBeGreaterThan(0);
+    // Should find something from requirements.md or goals.md or similar
+    // The mock embedding is simple, but "sparse" and "vector" appear heavily in requirements.md
+    const sources = content.map((r: any) => r.metadata.source);
+    const relevantDocs = sources.some((s: string) => s.includes("requirements") || s.includes("goals") || s.includes("README") || s.includes("skills"));
+    // Note: Due to mock embedding simplicity (hashing), there might be collisions, but it should generally find relevant docs
+    expect(relevantDocs).toBe(true);
+  });
+
+  it("should accept dense vector arrays", async () => {
+    // 1. Memorize with dense array (using high index to avoid collision)
+    await sendRequest("tools/call", {
+      name: "memorize",
+      arguments: {
+        id: "dense-test-unique",
+        text: "Dense vector test",
+        // [0, 0, 0, 0, 1] -> Sparse: {4:1}
+        vector: [0, 0, 0, 0, 1], 
+        metadata: { type: "dense" }
+      }
+    });
+
+    // 2. Search with dense array
+    const searchResult = await sendRequest("tools/call", {
+      name: "search",
+      arguments: {
+        // [0, 0, 0, 0, 1]
+        vector: [0, 0, 0, 0, 1],
+        limit: 1
+      }
+    });
+
+    const content = JSON.parse(searchResult.content[0].text);
+    expect(content).toHaveLength(1);
+    expect(content[0].id).toBe("dense-test-unique");
+    expect(content[0].similarity).toBeCloseTo(1);
+  });
+
+  it("should handle random dense arrays", async () => {
+    // Generate a random vector
+    const length = 50;
+    const denseVector: number[] = [];
+    for (let i = 0; i < length; i++) {
+        denseVector.push(Math.random());
+    }
+    
+    // Store it
+    const id = "random-dense-1";
+    await sendRequest("tools/call", {
+      name: "memorize",
+      arguments: {
+        id: id,
+        text: "Random dense vector test",
+        vector: denseVector,
+        metadata: { type: "random-dense" }
+      }
+    });
+
+    // Search for it using the exact same dense vector
+    const searchResult = await sendRequest("tools/call", {
+      name: "search",
+      arguments: {
+        vector: denseVector,
+        limit: 1
+      }
+    });
+
+    const content = JSON.parse(searchResult.content[0].text);
+    expect(content).toHaveLength(1);
+    expect(content[0].id).toBe(id);
+    expect(content[0].similarity).toBeCloseTo(1);
   });
 
   it("should handle larger datasets (stress test)", async () => {
