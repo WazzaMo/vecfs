@@ -1,10 +1,9 @@
-// Integration test logic updated for clarity and robustness
 import { spawn, ChildProcess } from "child_process";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "fs/promises";
 import * as path from "path";
 
-// Helper interface for JSON-RPC
+// Define message types for MCP protocol
 interface JSONRPCRequest {
   jsonrpc: "2.0";
   id: number;
@@ -23,34 +22,37 @@ describe("MCP Integration Test", () => {
   let serverProcess: ChildProcess;
   const testDataFile = "integration-test-data.jsonl";
 
-  // Cleanup function for test data
   async function cleanup() {
     try {
       await fs.unlink(testDataFile);
     } catch {}
   }
 
-  beforeAll(async () => {
-    await cleanup();
-    
-    // Start the server process
+  async function startServer() {
     serverProcess = spawn("node", ["dist/mcp-server.js"], {
-      stdio: ["pipe", "pipe", "inherit"], // Pipe stdin/stdout, inherit stderr
-      env: { ...process.env, VECFS_FILE: testDataFile } // Assuming server supports env var override or we modify it
+      stdio: ["pipe", "pipe", "inherit"], 
+      env: { ...process.env, VECFS_FILE: testDataFile } 
     });
-
-    // Wait for server to be ready (simple delay or handshake)
+    // Wait for server to be ready
     await new Promise(resolve => setTimeout(resolve, 1000));
-  });
+  }
 
-  afterAll(async () => {
+  function stopServer() {
     if (serverProcess) {
       serverProcess.kill();
     }
+  }
+
+  beforeAll(async () => {
+    await cleanup();
+    await startServer();
+  });
+
+  afterAll(async () => {
+    stopServer();
     await cleanup();
   });
 
-  // Helper to send request and get response
   function sendRequest(method: string, params: any): Promise<any> {
     return new Promise((resolve, reject) => {
       const id = Date.now();
@@ -73,7 +75,7 @@ describe("MCP Integration Test", () => {
               else resolve(response.result);
             }
           } catch (e) {
-            // Ignore parse errors from partial chunks
+            // Ignore parse errors
           }
         }
       };
@@ -82,9 +84,6 @@ describe("MCP Integration Test", () => {
       serverProcess.stdin?.write(JSON.stringify(request) + "\n");
     });
   }
-
-  // NOTE: This test suite assumes the server speaks standard JSON-RPC 2.0 over Stdio
-  // The current MCP SDK might wrap this, so we are testing the `main` loop behavior via stdio.
 
   it("should list available tools", async () => {
     const result = await sendRequest("tools/list", {});
@@ -96,7 +95,6 @@ describe("MCP Integration Test", () => {
   });
 
   it("should memorize and then search for a vector", async () => {
-    // 1. Memorize
     const memResult = await sendRequest("tools/call", {
       name: "memorize",
       arguments: {
@@ -108,7 +106,6 @@ describe("MCP Integration Test", () => {
     });
     expect(memResult.content[0].text).toContain("Stored entry: integration-1");
 
-    // 2. Search
     const searchResult = await sendRequest("tools/call", {
       name: "search",
       arguments: {
@@ -121,5 +118,149 @@ describe("MCP Integration Test", () => {
     expect(content).toHaveLength(1);
     expect(content[0].id).toBe("integration-1");
     expect(content[0].similarity).toBeCloseTo(1);
+  });
+
+  it("should retrieve relevant context among noise", async () => {
+    // 1. Store Topic A
+    await sendRequest("tools/call", {
+      name: "memorize",
+      arguments: {
+        id: "topic-a",
+        text: "This is topic A",
+        vector: { "10": 1, "11": 1 },
+        metadata: { tag: "A" }
+      }
+    });
+
+    // 2. Store Topic B (Noise)
+    await sendRequest("tools/call", {
+      name: "memorize",
+      arguments: {
+        id: "topic-b",
+        text: "This is topic B",
+        vector: { "20": 1, "21": 1 },
+        metadata: { tag: "B" }
+      }
+    });
+
+    // 3. Search for Topic A
+    const searchResult = await sendRequest("tools/call", {
+      name: "search",
+      arguments: {
+        vector: { "10": 1, "11": 0.5 }, // Close to A
+        limit: 5
+      }
+    });
+
+    const content = JSON.parse(searchResult.content[0].text);
+    // Should find topic-a
+    expect(content.length).toBeGreaterThan(0);
+    expect(content[0].id).toBe("topic-a");
+    
+    // Should not find topic-b or it should be very low similarity
+    const topicB = content.find((r: any) => r.id === "topic-b");
+    if (topicB) {
+        expect(topicB.similarity).toBe(0);
+    }
+  });
+
+  it("should improve context ranking with feedback", async () => {
+    // 1. Store an entry
+    const entryId = "feedback-test-1";
+    await sendRequest("tools/call", {
+      name: "memorize",
+      arguments: {
+        id: entryId,
+        text: "Feedback test entry",
+        vector: { "30": 1 },
+        metadata: { tag: "feedback" }
+      }
+    });
+
+    // 2. Search and get initial score
+    let searchResult = await sendRequest("tools/call", {
+      name: "search",
+      arguments: {
+        vector: { "30": 1 },
+        limit: 1
+      }
+    });
+    let content = JSON.parse(searchResult.content[0].text);
+    const initialScore = content[0].score;
+
+    // 3. Apply positive feedback
+    await sendRequest("tools/call", {
+      name: "feedback",
+      arguments: {
+        id: entryId,
+        scoreAdjustment: 5
+      }
+    });
+
+    // 4. Search again and verify score increase
+    searchResult = await sendRequest("tools/call", {
+      name: "search",
+      arguments: {
+        vector: { "30": 1 },
+        limit: 1
+      }
+    });
+    content = JSON.parse(searchResult.content[0].text);
+    expect(content[0].score).toBe(initialScore + 5);
+  });
+
+  it("should persist data across server restarts", async () => {
+     const persistId = "persist-1";
+     await sendRequest("tools/call", {
+        name: "memorize",
+        arguments: {
+           id: persistId,
+           text: "Persistence test",
+           vector: { "40": 1 },
+           metadata: {}
+        }
+     });
+     
+     stopServer();
+     await startServer();
+     
+     const searchResult = await sendRequest("tools/call", {
+        name: "search",
+        arguments: {
+           vector: { "40": 1 },
+           limit: 1
+        }
+     });
+     const content = JSON.parse(searchResult.content[0].text);
+     expect(content).toHaveLength(1);
+     expect(content[0].id).toBe(persistId);
+  });
+
+  it("should handle larger datasets (stress test)", async () => {
+    const entryCount = 100;
+    for (let i = 0; i < entryCount; i++) {
+        await sendRequest("tools/call", {
+            name: "memorize",
+            arguments: {
+                id: `stress-${i}`,
+                text: `Stress test entry ${i}`,
+                vector: { [i % 100]: 1 },
+                metadata: { index: i }
+            }
+        });
+    }
+    
+    const stats = await fs.stat(testDataFile);
+    console.log(`File size after ${entryCount} entries: ${stats.size} bytes`);
+    expect(stats.size).toBeGreaterThan(0);
+    // Safety check for user
+    expect(stats.size).toBeLessThan(10 * 1024 * 1024); // 10MB limit check
+
+    const searchResult = await sendRequest("tools/call", {
+        name: "search",
+        arguments: { vector: { "0": 1 }, limit: 5 }
+    });
+    const content = JSON.parse(searchResult.content[0].text);
+    expect(content.length).toBeGreaterThan(0);
   });
 });
