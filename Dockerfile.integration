@@ -1,0 +1,18 @@
+FROM node:18-slim
+
+WORKDIR /app
+
+# Install dependencies first for better caching
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copy source and config
+COPY tsconfig.json ./
+COPY ts-src ./ts-src
+COPY vitest.config.ts ./
+
+# Build the project
+RUN npm run build
+
+# Default command runs the integration test script
+CMD ["npm", "run", "test:integration"]

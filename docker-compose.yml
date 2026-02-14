@@ -1,0 +1,13 @@
+version: "3"
+
+services:
+  integration-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.integration
+    volumes:
+      - ./test-logs:/app/logs
+    environment:
+      - VECFS_FILE=/app/data/test-vecfs-data.jsonl
+    # Run the integration test suite
+    command: npm run test:integration
