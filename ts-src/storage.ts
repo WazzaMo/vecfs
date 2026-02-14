@@ -1,31 +1,32 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import { VecFSEntry, SparseVector, SearchResult } from "./types.js";
-import { cosineSimilarity } from "./sparse-vector.js";
+import { cosineSimilarity, norm } from "./sparse-vector.js";
+import { Mutex } from "./file-mutex.js";
 
 /**
- * Manages the storage and retrieval of vector entries from a local file.
- * The data is stored in a JSON Lines (JSONL) format, where each line is a valid JSON object.
+ * Manages the storage and retrieval of vector entries from a local JSONL file.
+ *
+ * Entries are cached in memory after the first read. All mutations update
+ * the cache synchronously and then persist to disk under a mutex so that
+ * concurrent operations cannot interleave file writes.
  */
 export class VecFSStorage {
   private filePath: string;
+  private entries: VecFSEntry[] | null = null;
+  private initialized = false;
+  private mutex = new Mutex();
 
-  /**
-   * Creates a new instance of VecFSStorage.
-   * 
-   * @param filePath - The absolute or relative path to the local storage file.
-   */
   constructor(filePath: string) {
     this.filePath = filePath;
   }
 
   /**
-   * Ensures that the storage file and its parent directory exist.
-   * If the file does not exist, it is created with empty content.
-   * 
-   * @throws {Error} If the directory cannot be created or the file cannot be written to.
+   * Ensures the storage file and its parent directory exist.
+   * Safe to call multiple times; only performs I/O on the first invocation.
    */
   async ensureFile(): Promise<void> {
+    if (this.initialized) return;
     const dir = path.dirname(this.filePath);
     await fs.mkdir(dir, { recursive: true });
     try {
@@ -33,48 +34,89 @@ export class VecFSStorage {
     } catch {
       await fs.writeFile(this.filePath, "");
     }
+    this.initialized = true;
   }
 
   /**
-   * Stores a new entry in the local vector file.
-   * The entry is appended to the file as a JSON string on a new line.
-   * 
-   * @param entry - The entry data to store (excluding the timestamp, which is auto-generated).
-   * @throws {Error} If the file write operation fails.
+   * Lazily loads all entries from the file into the in-memory cache.
+   * Subsequent calls return the cached array without re-reading the file.
    */
-  async store(entry: Omit<VecFSEntry, "timestamp">): Promise<void> {
-    const fullEntry: VecFSEntry = {
-      ...entry,
-      timestamp: Date.now(),
-    };
-    await fs.appendFile(this.filePath, JSON.stringify(fullEntry) + "\n");
-  }
-
-  /**
-   * Searches the vector store for entries similar to the query vector.
-   * The search is performed by calculating the cosine similarity between the query vector and all stored vectors.
-   * 
-   * @param queryVector - The sparse vector to search for.
-   * @param limit - The maximum number of results to return. Defaults to 5.
-   * @returns An array of SearchResult objects, sorted by similarity in descending order.
-   * @throws {Error} If the file read operation fails or the file content is invalid JSON.
-   */
-  async search(queryVector: SparseVector, limit: number = 5): Promise<SearchResult[]> {
+  private async loadEntries(): Promise<VecFSEntry[]> {
+    if (this.entries !== null) return this.entries;
+    await this.ensureFile();
     const content = await fs.readFile(this.filePath, "utf-8");
     const lines = content.trim().split("\n");
-    const results: SearchResult[] = [];
-
+    this.entries = [];
     for (const line of lines) {
       if (!line) continue;
       try {
-        const entry: VecFSEntry = JSON.parse(line);
-        const similarity = cosineSimilarity(queryVector, entry.vector);
-        results.push({ ...entry, similarity });
-      } catch (e) {
-        // Skip malformed lines gracefully
+        this.entries.push(JSON.parse(line));
+      } catch {
         console.warn(`Skipping malformed line in ${this.filePath}`);
       }
     }
+    return this.entries;
+  }
+
+  /** Rewrites the entire file from the in-memory cache. */
+  private async persistAll(): Promise<void> {
+    if (!this.entries) return;
+    const content =
+      this.entries.length > 0
+        ? this.entries.map((e) => JSON.stringify(e)).join("\n") + "\n"
+        : "";
+    await fs.writeFile(this.filePath, content);
+  }
+
+  /** Appends a single entry to the end of the file. */
+  private async persistAppend(entry: VecFSEntry): Promise<void> {
+    await fs.appendFile(this.filePath, JSON.stringify(entry) + "\n");
+  }
+
+  /**
+   * Stores an entry. If an entry with the same ID already exists it is
+   * replaced (upsert semantics), otherwise the entry is appended.
+   *
+   * @returns true if a new entry was created, false if an existing entry was updated.
+   */
+  async store(entry: Omit<VecFSEntry, "timestamp">): Promise<boolean> {
+    const release = await this.mutex.acquire();
+    try {
+      const entries = await this.loadEntries();
+      const fullEntry: VecFSEntry = { ...entry, timestamp: Date.now() };
+      const existingIndex = entries.findIndex((e) => e.id === entry.id);
+      if (existingIndex >= 0) {
+        entries[existingIndex] = fullEntry;
+        await this.persistAll();
+        return false;
+      }
+      entries.push(fullEntry);
+      await this.persistAppend(fullEntry);
+      return true;
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Searches the store for entries most similar to the query vector.
+   * Pre-computes the query norm once to avoid redundant calculations.
+   *
+   * @param queryVector - The sparse vector to search for.
+   * @param limit - Maximum number of results. Defaults to 5.
+   * @returns Search results sorted by descending cosine similarity.
+   */
+  async search(
+    queryVector: SparseVector,
+    limit: number = 5,
+  ): Promise<SearchResult[]> {
+    const entries = await this.loadEntries();
+    const queryNorm = norm(queryVector);
+
+    const results: SearchResult[] = entries.map((entry) => ({
+      ...entry,
+      similarity: cosineSimilarity(queryVector, entry.vector, queryNorm),
+    }));
 
     return results
       .sort((a, b) => b.similarity - a.similarity)
@@ -82,29 +124,40 @@ export class VecFSStorage {
   }
 
   /**
-   * Updates the reinforcement score of a specific entry.
-   * This method rewrites the entire file, which may be slow for very large datasets.
-   * 
-   * @param id - The unique identifier of the entry to update.
-   * @param scoreAdjustment - The amount to add to the current score (can be negative).
-   * @throws {Error} If the file read/write operation fails.
+   * Adjusts the reinforcement score of an entry.
+   *
+   * @returns true if the entry was found and updated, false otherwise.
    */
-  async updateScore(id: string, scoreAdjustment: number): Promise<void> {
-    const content = await fs.readFile(this.filePath, "utf-8");
-    const lines = content.trim().split("\n");
-    const updatedLines = lines.map((line: string) => {
-      if (!line) return line;
-      try {
-        const entry: VecFSEntry = JSON.parse(line);
-        if (entry.id === id) {
-          entry.score += scoreAdjustment;
-        }
-        return JSON.stringify(entry);
-      } catch (e) {
-         return line; // Preserve malformed lines as-is during rewrite
-      }
-    });
+  async updateScore(id: string, scoreAdjustment: number): Promise<boolean> {
+    const release = await this.mutex.acquire();
+    try {
+      const entries = await this.loadEntries();
+      const entry = entries.find((e) => e.id === id);
+      if (!entry) return false;
+      entry.score += scoreAdjustment;
+      await this.persistAll();
+      return true;
+    } finally {
+      release();
+    }
+  }
 
-    await fs.writeFile(this.filePath, updatedLines.join("\n") + "\n");
+  /**
+   * Removes an entry by ID.
+   *
+   * @returns true if the entry was found and deleted, false otherwise.
+   */
+  async delete(id: string): Promise<boolean> {
+    const release = await this.mutex.acquire();
+    try {
+      const entries = await this.loadEntries();
+      const index = entries.findIndex((e) => e.id === id);
+      if (index < 0) return false;
+      entries.splice(index, 1);
+      await this.persistAll();
+      return true;
+    } finally {
+      release();
+    }
   }
 }
