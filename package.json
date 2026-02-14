@@ -11,6 +11,7 @@
     "start": "node dist/mcp-server.js",
     "test": "vitest run",
     "test:integration": "vitest run --testTimeout 10000 integration.test.ts",
+    "test:http": "tsc && vitest run --testTimeout 10000 http-integration.test.ts",
     "test-logic": "tsc && node dist/test-vecfs.js"
   },
   "repository": {
@@ -27,6 +28,10 @@
   "homepage": "https://github.com/WazzaMo/vecfs#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "mathjs": "^15.1.1",
     "zod": "^4.3.6"
   },
