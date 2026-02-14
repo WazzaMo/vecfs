@@ -58,6 +58,20 @@ To start the VecFS MCP server (Stdio transport):
 npm start
 ```
 
+## Configuration
+
+By default, VecFS stores data in a file named `vecfs-data.jsonl` in the current working directory. You can override this by setting the `VECFS_FILE` environment variable:
+
+```bash
+# Linux/macOS
+export VECFS_FILE=/path/to/my-vectors.jsonl
+npm start
+
+# Windows (PowerShell)
+$env:VECFS_FILE="C:\path\to\my-vectors.jsonl"
+npm start
+```
+
 # Documentation
 
 - [Goals](docs/goals.md) - The vision and core principles of VecFS.
