@@ -18,14 +18,25 @@ all text labels so that non-alpha characters do not break the rendering.
 
 5. Try to format the table so it looks clear in the markdown text file.
 
-6. Tables communicate better when a category or label is being described.
+6. Tables communicate better when a category or label is being described when the row is short.
+    For long rows, use the next level 3 or heading (### or ####) with, long form text, one or more
+    paragraphs below the heading, which allows for more items to be added. 
 
+#### Table example
 | Category | Description          |
 |----------|----------------------|
 | Note 1   | make it easy to read |
 
+... and...
+
+#### Long Form text
+
+Using a level 4 heading gives more room for lengthier answers.
+
+
 ... is better than
 
+#### Labelled line
 List of labelled infos:
 
-1. **Note1:** Note easy to read as a text file.
+<number>. **Note1:** Note easy to read as a text file.
