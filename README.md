@@ -179,6 +179,34 @@ cd py-src
 uv run pytest tests/test_integration.py -v
 ```
 
+# Local Agent installs
+
+## Running VecFS in Cursor
+
+Use the package script to bundle up VecFS and use it to install
+the MCP server and `vecfs-embed` program globally.
+
+In your local project where you want persistent memory add:
+
+mkdir -p .cursor
+
+create .cursor/mcp.json and give it this text.
+```
+{
+  "mcpServers": {
+    "vecfs": {
+      "command": "npx",
+      "args": ["vecfs"],
+      "env": {
+        "VECFS_FILE": "./vecfs-memory.jsonl",
+        "PORT": "3000"
+      }
+    }
+  }
+} 
+```
+
+
 # Documentation
 
 - [Goals](docs/goals.md) - The vision and core principles of VecFS.
