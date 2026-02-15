@@ -8,7 +8,7 @@ await build({
   minify: true,
   treeShaking: true,
   banner: {
-    js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
+    js: "#!/usr/bin/env node\nimport { createRequire } from 'module'; const require = createRequire(import.meta.url);",
   },
   outfile: "dist/mcp-server.js",
 });
