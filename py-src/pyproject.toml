@@ -2,7 +2,29 @@
 name = "vecfs-embed"
 version = "0.1.0"
 description = "Model-agnostic embedding script for VecFS sparse vector storage."
+readme = "README.md"
 requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [
+    { name = "Warwick Molloy" },
+]
+keywords = [
+    "vecfs",
+    "embedding",
+    "sparse-vector",
+    "mcp",
+    "agent-memory",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "pydantic-ai-slim[sentence-transformers]",
 ]
@@ -19,6 +41,11 @@ all = [
     "pydantic-ai-slim[voyageai]",
 ]
 dev = ["pytest", "pytest-asyncio"]
+
+[project.urls]
+Homepage = "https://github.com/WazzaMo/vecfs"
+Repository = "https://github.com/WazzaMo/vecfs"
+Issues = "https://github.com/WazzaMo/vecfs/issues"
 
 [project.scripts]
 vecfs-embed = "vecfs_embed.cli:main"
