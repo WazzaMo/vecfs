@@ -138,6 +138,26 @@ cd py-src
 uv sync
 ```
 
+## Packaging for Distribution
+
+To create a self-contained distributable archive containing the MCP server, the embedding script wheel, the agent skill, and an installer:
+
+```bash
+./scripts/package.sh
+```
+
+This runs all build steps, executes the test suites, and produces a minimal `vecfs-<version>.tar.gz` (~400 KB). The tarball contains no source code, no `node_modules`, and no dev tooling — just pre-built artefacts ready to install.
+
+To install from the archive:
+
+```bash
+tar xzf vecfs-0.1.0.tar.gz
+cd vecfs-0.1.0
+./install.sh            # installs both MCP server and embedding script
+./install.sh --server   # MCP server only
+./install.sh --embed    # embedding script only
+```
+
 ## Running Tests
 
 ```bash
