@@ -22,7 +22,7 @@ const storage = new VecFSStorage(dataFile);
 const handlers = createToolHandlers(storage);
 
 const server = new Server(
-  { name: "vecfs-server", version: "1.0.0" },
+  { name: "vecfs-server", version: "0.1.0" },
   { capabilities: { tools: {} } },
 );
 
