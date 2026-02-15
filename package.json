@@ -1,26 +1,42 @@
 {
   "name": "vecfs",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "VecFS (Vector File System) is a lightweight, local-first vector storage specification and implementation designed for AI agent long-term memory.",
   "main": "dist/mcp-server.js",
-  "directories": {
-    "doc": "docs"
+  "bin": {
+    "vecfs": "dist/mcp-server.js"
   },
+  "files": [
+    "dist/",
+    "vecfs-memory/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "check": "tsc --noEmit",
     "build": "rm -rf dist && tsc --noEmit && node esbuild.config.mjs",
     "start": "node dist/mcp-server.js",
     "test": "vitest run",
     "test:integration": "vitest run --testTimeout 30000 integration.test.ts",
-    "test:http": "npm run build && vitest run --testTimeout 30000 http-integration.test.ts"
+    "test:http": "npm run build && vitest run --testTimeout 30000 http-integration.test.ts",
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/WazzaMo/vecfs.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "vecfs",
+    "vector",
+    "sparse-vector",
+    "mcp",
+    "model-context-protocol",
+    "agent-memory",
+    "long-term-memory",
+    "local-first"
+  ],
+  "author": "Warwick Molloy",
+  "license": "Apache-2.0",
   "type": "module",
   "bugs": {
     "url": "https://github.com/WazzaMo/vecfs/issues"
