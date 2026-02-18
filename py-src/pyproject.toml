@@ -27,6 +27,8 @@ classifiers = [
 ]
 dependencies = [
     "pydantic-ai-slim[sentence-transformers]",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=0.24",
 ]
 
 [project.optional-dependencies]
@@ -49,6 +51,10 @@ Issues = "https://github.com/WazzaMo/vecfs/issues"
 
 [project.scripts]
 vecfs-embed = "vecfs_embed.cli:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = ["asyncio: mark test as an async test"]
 
 [build-system]
 requires = ["hatchling"]

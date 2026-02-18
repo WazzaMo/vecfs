@@ -77,6 +77,30 @@ describe("VecFSStorage", () => {
     expect(results[1].id).toBe("2");
   });
 
+  it("should boost ranking by feedback score when similarity is equal", async () => {
+    const storage = new VecFSStorage(testFilePath);
+    await storage.ensureFile();
+
+    const sameVector = { 0: 1, 1: 0 };
+    await storage.store({
+      id: "low-feedback",
+      vector: sameVector,
+      metadata: {},
+      score: 0,
+    });
+    await storage.store({
+      id: "high-feedback",
+      vector: sameVector,
+      metadata: {},
+      score: 10,
+    });
+
+    const results = await storage.search({ 0: 1, 1: 0 });
+    expect(results).toHaveLength(2);
+    expect(results[0].id).toBe("high-feedback");
+    expect(results[1].id).toBe("low-feedback");
+  });
+
   it("should return empty results for empty store", async () => {
     const storage = new VecFSStorage(testFilePath);
     await storage.ensureFile();

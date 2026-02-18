@@ -1,6 +1,6 @@
 {
   "name": "vecfs",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "VecFS (Vector File System) is a lightweight, local-first vector storage specification and implementation designed for AI agent long-term memory.",
   "main": "dist/mcp-server.js",
   "bin": {

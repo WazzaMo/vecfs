@@ -4,6 +4,25 @@ import { VecFSEntry, SparseVector, SearchResult } from "./types.js";
 import { cosineSimilarity, norm } from "./sparse-vector.js";
 import { Mutex } from "./file-mutex.js";
 
+/** Weight for feedback score in ranking (bounded boost so similarity stays dominant). */
+const FEEDBACK_RANK_WEIGHT = 0.1;
+
+/**
+ * Bounded contribution of reinforcement score to ranking.
+ * Maps score to approximately (-WEIGHT, +WEIGHT) so one very high score cannot overwhelm similarity.
+ */
+function feedbackBoost(score: number): number {
+  return FEEDBACK_RANK_WEIGHT * (score / (1 + Math.abs(score)));
+}
+
+/**
+ * Combined rank for sorting: cosine similarity plus feedback boost.
+ * Higher is better; used so positively reinforced entries rise in search results.
+ */
+function combinedRank(r: { similarity: number; score: number }): number {
+  return r.similarity + feedbackBoost(r.score);
+}
+
 /**
  * Manages the storage and retrieval of vector entries from a local JSONL file.
  *
@@ -100,11 +119,13 @@ export class VecFSStorage {
 
   /**
    * Searches the store for entries most similar to the query vector.
+   * Ranking combines cosine similarity with the reinforcement score so that
+   * positively reinforced context is prioritized (per requirements).
    * Pre-computes the query norm once to avoid redundant calculations.
    *
    * @param queryVector - The sparse vector to search for.
    * @param limit - Maximum number of results. Defaults to 5.
-   * @returns Search results sorted by descending cosine similarity.
+   * @returns Search results sorted by descending combined score (similarity + feedback boost).
    */
   async search(
     queryVector: SparseVector,
@@ -119,7 +140,7 @@ export class VecFSStorage {
     }));
 
     return results
-      .sort((a, b) => b.similarity - a.similarity)
+      .sort((a, b) => combinedRank(b) - combinedRank(a))
       .slice(0, limit);
   }
 
