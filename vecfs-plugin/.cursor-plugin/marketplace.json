@@ -1,0 +1,17 @@
+{
+  "name": "vecfs",
+  "owner": {
+    "name": "Warwick Molloy"
+  },
+  "metadata": {
+    "description": "VecFS plugin for Cursor - local-first vector storage for AI agent memory",
+    "version": "0.1.1"
+  },
+  "plugins": [
+    {
+      "name": "vecfs",
+      "source": ".",
+      "description": "Local-first vector storage for AI agent long-term memory"
+    }
+  ]
+}

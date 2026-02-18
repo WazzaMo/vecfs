@@ -1,0 +1,23 @@
+{
+  "name": "vecfs",
+  "displayName": "VecFS",
+  "version": "0.1.1",
+  "description": "Local-first vector storage for AI agent long-term memory. Search, memorize, and reinforce context with sparse vectors—no external database required.",
+  "author": {
+    "name": "Warwick Molloy"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "vecfs",
+    "memory",
+    "mcp",
+    "vector",
+    "agent-memory",
+    "long-term-memory",
+    "local-first",
+    "sparse-vector"
+  ],
+  "logo": "assets/logo.svg",
+  "skills": "skills/vecfs-memory",
+  "mcpServers": "mcp.json"
+}

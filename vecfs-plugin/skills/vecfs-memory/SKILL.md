@@ -1,0 +1,125 @@
+---
+name: vecfs-memory
+description: >
+  Gives an agent persistent long-term memory backed by a local sparse-vector
+  file. Use when the agent should recall past context, learn from interactions,
+  or incorporate reinforcement feedback. Relevant for tasks mentioning memory,
+  recall, learning, history, or context retention.
+license: Apache-2.0
+compatibility: >
+  Requires a running VecFS MCP server (stdio or HTTP mode), Node.js 22+,
+  and Python 3.10+ with pydantic-ai for embedding generation.
+metadata:
+  author: warwick-molloy
+  version: "0.1"
+allowed-tools: search memorize feedback delete
+---
+
+# When to Activate
+
+Activate this skill when any of the following apply:
+
+- The user's task is non-trivial and could benefit from prior context.
+- The user explicitly mentions remembering, recalling, or learning.
+- The agent encounters a repeated error or pattern it has seen before.
+- The conversation involves a project that spans multiple sessions.
+
+# Generating Embeddings
+
+The VecFS MCP server accepts pre-computed sparse vectors. Use the bundled
+embedding script to convert text into a sparse vector before calling the
+server tools.
+
+## Embed a Query (for search)
+
+```bash
+echo "your search text" | python -m vecfs_embed --mode query
+```
+
+## Embed a Document (for memorisation)
+
+```bash
+python -m vecfs_embed --mode document "key lesson or fact to remember"
+```
+
+The script outputs JSON with a `vector` field that can be passed directly
+to the `search` or `memorize` tools.
+
+See [references/vector-encoding.md](references/vector-encoding.md) for
+details on how embeddings are converted to sparse vectors.
+
+# Context Sweep (Proactive Recall)
+
+At the start of any non-trivial task, perform a Context Sweep:
+
+1. Extract keywords and concepts from the current user prompt.
+2. Generate a sparse vector by running the embedding script in `query` mode.
+3. Call the `search` tool with that vector.
+4. If results are returned with high similarity, incorporate them into
+   your reasoning. Mention to the user that you found relevant history.
+5. If results have low similarity or no results are returned, proceed
+   without historical context. Do not force irrelevant recall.
+
+# Memorisation (Reflective Learning)
+
+After completing a task or achieving a milestone:
+
+1. Identify key lessons, corrections, or facts worth retaining.
+2. Filter for long-term value: avoid storing transient details like
+   one-time commands or session-specific paths.
+3. Summarise the lesson as a short, clear text (one to three sentences).
+4. Generate a sparse vector by running the embedding script in `document` mode.
+5. Call the `memorize` tool with:
+   - A descriptive `id` (e.g., `lesson-react-useeffect-cleanup`).
+   - The `text` content.
+   - The sparse `vector`.
+   - Optional `metadata` tags (e.g., `{"topic": "react", "type": "correction"}`).
+
+If an entry with the same `id` already exists, `memorize` updates it in place.
+
+# Feedback Loop
+
+Actively process reinforcement signals to improve recall quality:
+
+## Positive Feedback
+
+When the user confirms that recalled context was helpful, call `feedback`
+with a positive `scoreAdjustment` (e.g., `+1`) for the entries that were used.
+
+## Negative Feedback
+
+When the user corrects you or says recalled context was wrong, call `feedback`
+with a negative `scoreAdjustment` (e.g., `-1`).
+
+## Implicit Success
+
+If the task completes without correction, call `feedback` with a small
+positive adjustment (e.g., `+0.5`) for any context entries that contributed.
+
+# Cleanup
+
+Use the `delete` tool to remove entries that are clearly outdated or wrong.
+If two entries contradict each other, keep the one with the higher score and
+delete the other.
+
+# Edge Cases
+
+- **Empty search results:** Proceed without context. Do not fabricate recall.
+- **Conflicting memories:** Prefer the entry with the higher reinforcement
+  score. Consider deleting the lower-scored conflicting entry.
+- **Large text:** Summarise before memorising. Keep stored text concise to
+  maximise retrieval quality.
+- **Bulk indexing:** Use `--batch` mode with the embedding script to embed
+  multiple texts at once, then call `memorize` for each result.
+
+# Tool Quick Reference
+
+See [references/tool-reference.md](references/tool-reference.md) for full
+parameter details.
+
+| Tool     | Purpose                          | Required Params     |
+|----------|----------------------------------|---------------------|
+| search   | Find relevant past context       | vector              |
+| memorize | Store a new lesson or fact       | id, vector          |
+| feedback | Adjust reinforcement score       | id, scoreAdjustment |
+| delete   | Remove an outdated entry         | id                  |
