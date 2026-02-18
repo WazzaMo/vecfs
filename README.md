@@ -22,7 +22,21 @@ VecFS gives AI agents a simple, efficient way to store and retrieve context loca
 
 # Quick Start
 
-## Install the MCP Server
+## Install from GitHub (no npm or pip)
+
+Clone the repo and run the installer. You only need Node.js and Python runtimes.
+
+```bash
+git clone https://github.com/WazzaMo/vecfs.git
+cd vecfs
+./install-from-github.sh
+```
+
+This installs into `~/.local` by default. Add `~/.local/bin` to your PATH if needed. For the embedding script, install Python dependencies once: `pip install ~/.local/lib/vecfs/embed` (or use `./install-from-github.sh --install-python-deps`).
+
+Options: `--server` (MCP server only), `--embed` (embedding script only), `--prefix DIR`, `--install-python-deps`, `--help`.
+
+## Install the MCP Server (npm)
 
 ```bash
 npm install -g vecfs
@@ -52,7 +66,9 @@ Add VecFS to your agent's MCP configuration (Claude Desktop, Cursor, etc.):
 }
 ```
 
-## Install the Embedding Script
+If you installed from GitHub with `install-from-github.sh`, use the full path to the binary, e.g. `"command": "/home/you/.local/bin/vecfs"` (and omit `args`), or ensure `~/.local/bin` is on the PATH used by your agent.
+
+## Install the Embedding Script (pip/uv)
 
 The embedding script converts text to sparse vectors for the MCP server.
 
@@ -65,6 +81,8 @@ Or using uv:
 ```bash
 uv tool install vecfs-embed
 ```
+
+If you used the GitHub installer above, install deps from the installed copy: `pip install ~/.local/lib/vecfs/embed`.
 
 ### Usage
 
