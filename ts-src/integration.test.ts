@@ -482,6 +482,36 @@ describe("MCP Integration Test", () => {
   });
 
   // -----------------------------------------------------------------------
+  // Vector as JSON string (MCP client compatibility)
+  // -----------------------------------------------------------------------
+
+  it("should accept vector as JSON string in search and memorize", async () => {
+    const id = "string-vector-test";
+    const uniqueVector = { "99994": 1, "99995": 0.5 };
+    await sendRequest("tools/call", {
+      name: "memorize",
+      arguments: {
+        id,
+        text: "Stored with string vector",
+        vector: JSON.stringify(uniqueVector),
+        metadata: {},
+      },
+    });
+
+    const searchResult = await sendRequest("tools/call", {
+      name: "search",
+      arguments: {
+        vector: JSON.stringify(uniqueVector),
+        limit: 1,
+      },
+    });
+
+    const content = JSON.parse(searchResult.content[0].text);
+    expect(content).toHaveLength(1);
+    expect(content[0].id).toBe(id);
+  });
+
+  // -----------------------------------------------------------------------
   // Stress test
   // -----------------------------------------------------------------------
 

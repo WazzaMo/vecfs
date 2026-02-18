@@ -24,20 +24,41 @@ export type ToolHandlerMap = Record<
 // Argument schemas (zod)
 // ---------------------------------------------------------------------------
 
-const vectorSchema = z.union([
+const vectorShapeSchema = z.union([
   z.record(z.string(), z.number()),
   z.array(z.number()),
 ]);
 
+/**
+ * If args is an object with a string `vector` property, parses it as JSON
+ * so the vector is sent as object/array. MCP clients may send vector as a
+ * JSON string; this ensures we accept both.
+ */
+function ensureVectorIsObjectOrArray(
+  args: unknown,
+): unknown {
+  if (args === null || typeof args !== "object" || !("vector" in args))
+    return args;
+  const v = (args as Record<string, unknown>).vector;
+  if (typeof v !== "string") return args;
+  try {
+    return { ...(args as Record<string, unknown>), vector: JSON.parse(v) };
+  } catch {
+    throw new Error(
+      "Vector must be a JSON object (sparse) or array of numbers (dense).",
+    );
+  }
+}
+
 const searchArgsSchema = z.object({
-  vector: vectorSchema,
+  vector: vectorShapeSchema,
   limit: z.number().optional(),
 });
 
 const memorizeArgsSchema = z.object({
   id: z.string(),
   text: z.string().optional(),
-  vector: vectorSchema,
+  vector: vectorShapeSchema,
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -99,7 +120,7 @@ export function createToolHandlers(storage: VecFSStorage): ToolHandlerMap {
     async search(args: unknown): Promise<ToolResult> {
       const { vector, limit } = validateArgs(
         searchArgsSchema,
-        args,
+        ensureVectorIsObjectOrArray(args),
         "search",
       );
       const sparseVector = normalizeVector(vector);
@@ -112,7 +133,7 @@ export function createToolHandlers(storage: VecFSStorage): ToolHandlerMap {
     async memorize(args: unknown): Promise<ToolResult> {
       const { id, text, vector, metadata } = validateArgs(
         memorizeArgsSchema,
-        args,
+        ensureVectorIsObjectOrArray(args),
         "memorize",
       );
       const sparseVector = normalizeVector(vector);
