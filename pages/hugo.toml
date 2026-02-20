@@ -1,0 +1,33 @@
+baseURL = "https://wazzamo.github.io/vecfs/"
+languageCode = "en-us"
+title = "VecFS"
+theme = "hugo-book"
+publishDir = "public"
+
+[params]
+  BookToC = true
+  BookSearch = true
+  BookRepo = "https://github.com/WazzaMo/vecfs"
+  BookEditPath = "edit/main"
+  BookComments = false
+  BookPortable = false
+  BookDateForm = "2006-02-01"
+  BookShowToC = true
+  BookMenuBundle = 1
+  BookSection = "docs"
+
+[outputs]
+  home = ["HTML", "RSS"]
+
+[markup]
+  [markup.goldmark.renderer]
+    unsafe = true
+  [markup.highlight]
+    anchorLineNos = false
+    codeFences = true
+    guessSyntax = true
+    lineNoStart = 1
+    lineNos = false
+    noClasses = false
+    style = "github"
+    tabWidth = 4
