@@ -49,3 +49,22 @@ Using a level 4 heading gives more room for lengthier answers.
 List of labelled infos:
 
 1. **Note1:** Not easy to read as a text file.
+
+# Purposeful Markdown
+
+## Notes
+
+Notes are held in the `docs/notes` directory and follow this document guide for formatting.
+A note should be prefixed with the date in YYYY-MM-DD format and have a meaningful name indicating
+the essential topic of the note.
+
+## Release Notes
+
+Release notes are held in `docs/release-notes` and follow the formatting rules in this document
+guide. They're naming convention is {semver}-Release-{date}.md where "semver" means semantic versioning
+with Major.Minor.Revision numbers and date is in YYYY-MM-DD format.
+
+They should summarise key features delivered in this release, which of VecFS includes:
+- significant changes in vecfs_embed 
+- significant changes in the MCP server
+- any new skills added.
