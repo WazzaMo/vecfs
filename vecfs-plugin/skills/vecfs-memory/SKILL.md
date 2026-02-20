@@ -23,6 +23,7 @@ Activate this skill when any of the following apply:
 - The user explicitly mentions remembering, recalling, or learning.
 - The agent encounters a repeated error or pattern it has seen before.
 - The conversation involves a project that spans multiple sessions.
+- The conversation or a markdown file indicates that a decision has been made.
 
 # Generating Embeddings
 
@@ -56,7 +57,8 @@ At the start of any non-trivial task, perform a Context Sweep:
 2. Generate a sparse vector by running the embedding script in `query` mode.
 3. Call the `search` tool with that vector.
 4. If results are returned with high similarity, incorporate them into
-   your reasoning. Mention to the user that you found relevant history.
+   your reasoning (including any stored decisions). Mention to the user
+   that you found relevant history.
 5. If results have low similarity or no results are returned, proceed
    without historical context. Do not force irrelevant recall.
 
@@ -64,7 +66,7 @@ At the start of any non-trivial task, perform a Context Sweep:
 
 After completing a task or achieving a milestone:
 
-1. Identify key lessons, corrections, or facts worth retaining.
+1. Identify key lessons, corrections, decisions, or facts worth retaining.
 2. Filter for long-term value: avoid storing transient details like
    one-time commands or session-specific paths.
 3. Summarise the lesson as a short, clear text (one to three sentences).
@@ -76,6 +78,28 @@ After completing a task or achieving a milestone:
    - Optional `metadata` tags (e.g., `{"topic": "react", "type": "correction"}`).
 
 If an entry with the same `id` already exists, `memorize` updates it in place.
+
+# Decisions
+
+Decisions detected in the user-agent conversation or in markdown files
+(e.g. "we decided to use X", "Decision: ...", or a documented choice)
+should be embedded into VecFS memory so they are available in future
+context sweeps.
+
+## Storing decisions
+
+When you detect a decision:
+
+1. Summarise it in one to three sentences.
+2. Generate a sparse vector with the embedding script in `document` mode.
+3. Call `memorize` with a descriptive `id` (e.g. `decision-use-react-query`),
+   the `text`, the `vector`, and metadata such as `{"type": "decision"}`.
+
+## Discovering decisions during a context sweep
+
+Context sweep results may include stored decisions. Treat them as
+relevant history: incorporate recalled decisions into your reasoning and
+mention them to the user when they affect the current task.
 
 # Feedback Loop
 
