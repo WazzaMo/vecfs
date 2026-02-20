@@ -8,11 +8,13 @@ This directory contains the [Hugo](https://gohugo.io/) source for the VecFS proj
 
 ## Theme
 
-The site uses the [Hugo Book](https://themes.gohugo.io/themes/hugo-book/) theme as a Git submodule. After cloning the repo, initialise submodules:
+The site uses the [Hugo Book](https://themes.gohugo.io/themes/hugo-book/) theme as a Git submodule, **pinned to v9** for compatibility with Hugo 0.123.x (newer Book tags require Hugo 0.146+). After cloning the repo, initialise submodules:
 
 ```bash
 git submodule update --init --recursive
 ```
+
+The submodule will be at tag `v9`. If you use a newer Hugo (0.146+) and want the latest Book theme, run `git checkout main` inside `pages/themes/hugo-book` and set `BookMenuBundle = "/menu"` (string) or remove it if using the file-tree menu; then adjust `hugo.toml` for any theme changes.
 
 ## Build
 
