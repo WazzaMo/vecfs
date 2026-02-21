@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -243,3 +244,84 @@ class TestCLI:
             "--mode", "document", "--threshold", "0.1", stdin=first_doc
         )
         assert high["non_zero_count"] <= low["non_zero_count"]
+
+
+# ---------------------------------------------------------------------------
+# Configuration file (vecfs.yaml) integration tests
+# ---------------------------------------------------------------------------
+
+
+class TestCLIConfig:
+    """CLI with vecfs.yaml: config file and env override."""
+
+    def _run_cli(
+        self,
+        *args: str,
+        stdin: str | None = None,
+        cwd: Path | None = None,
+        env: dict[str, str] | None = None,
+    ) -> dict | list:
+        """Invoke vecfs_embed CLI and parse JSON stdout."""
+        cmd = [sys.executable, "-m", "vecfs_embed", *args]
+        run_env = os.environ.copy()
+        if env:
+            run_env.update(env)
+        proc = subprocess.run(
+            cmd,
+            input=stdin,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=str(cwd) if cwd else str(Path(__file__).resolve().parent.parent),
+            env=run_env,
+        )
+        assert proc.returncode == 0, f"CLI failed: {proc.stderr}"
+        return json.loads(proc.stdout)
+
+    def test_threshold_from_config_file(self, first_doc: str, tmp_path: Path) -> None:
+        """When vecfs.yaml sets embed.threshold, CLI uses it unless overridden."""
+        config_file = tmp_path / "vecfs.yaml"
+        config_file.write_text(
+            "storage:\n  file: ./data.jsonl\n"
+            "embed:\n  model: sentence-transformers:all-MiniLM-L6-v2\n  threshold: 0.1\n"
+        )
+        # Run with --config so we use this file; higher threshold => sparser output
+        result = self._run_cli(
+            "--config", str(config_file),
+            "--mode", "document",
+            stdin=first_doc[:500],
+            cwd=tmp_path,
+        )
+        assert isinstance(result, dict)
+        assert "non_zero_count" in result
+        # With threshold 0.1 we expect fewer components than default 0.01
+        result_high = result["non_zero_count"]
+
+        # Same input with default threshold (no config) should have more components
+        result_low = self._run_cli(
+            "--mode", "document", "--threshold", "0.01",
+            stdin=first_doc[:500],
+        )
+        assert result_low["non_zero_count"] >= result_high
+
+    def test_env_threshold_overrides_config_file(
+        self, first_doc: str, tmp_path: Path
+    ) -> None:
+        """VECFS_EMBED_THRESHOLD overrides embed.threshold from vecfs.yaml."""
+        config_file = tmp_path / "vecfs.yaml"
+        config_file.write_text(
+            "embed:\n  threshold: 0.01\n"
+        )
+        # Config says 0.01; env says 0.1 => env wins, sparser output
+        env = os.environ.copy()
+        env["VECFS_EMBED_THRESHOLD"] = "0.1"
+        result = self._run_cli(
+            "--config", str(config_file),
+            "--mode", "document",
+            stdin=first_doc[:500],
+            cwd=tmp_path,
+            env=env,
+        )
+        assert isinstance(result, dict)
+        # Should be sparse (high threshold)
+        assert result["non_zero_count"] < 200

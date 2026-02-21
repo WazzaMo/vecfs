@@ -3261,6 +3261,7 @@ dependencies = [
     { name = "pydantic-ai-slim", extra = ["sentence-transformers"] },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "pyyaml" },
 ]
 
 [package.optional-dependencies]
@@ -3299,6 +3300,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
     { name = "pytest-asyncio", marker = "extra == 'dev'" },
+    { name = "pyyaml", specifier = ">=6.0" },
 ]
 provides-extras = ["openai", "google", "cohere", "voyageai", "all", "dev"]
 

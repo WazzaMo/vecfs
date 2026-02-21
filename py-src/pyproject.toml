@@ -27,6 +27,7 @@ classifiers = [
 ]
 dependencies = [
     "pydantic-ai-slim[sentence-transformers]",
+    "pyyaml>=6.0",
     "pytest>=9.0.2",
     "pytest-asyncio>=0.24",
 ]

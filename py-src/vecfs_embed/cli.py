@@ -5,6 +5,9 @@ Supports three modes:
   - Single text embedding (default)
   - Batch embedding (--batch)
   - Calibration (--calibrate)
+
+Configuration: vecfs.yaml (or .vecfs.yaml, or VECFS_CONFIG / --config).
+Env vars override: VECFS_FILE, VECFS_EMBED_MODEL, VECFS_EMBED_DIMS, VECFS_EMBED_THRESHOLD.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ import json
 import os
 import sys
 
+from .config import load_config
 from .embed import calibrate, embed_batch, embed_single
 
 DEFAULT_MODEL = "sentence-transformers:all-MiniLM-L6-v2"
@@ -22,11 +26,19 @@ DEFAULT_THRESHOLD = 0.01
 
 
 def _parse_args() -> argparse.Namespace:
+    config = load_config(sys.argv)
+    embed = config.embed
+
     parser = argparse.ArgumentParser(
         prog="vecfs-embed",
         description="Convert text to VecFS sparse vectors using any embedding model.",
     )
 
+    parser.add_argument(
+        "--config",
+        metavar="PATH",
+        help="Path to vecfs.yaml (or set VECFS_CONFIG).",
+    )
     parser.add_argument(
         "text",
         nargs="?",
@@ -51,28 +63,23 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        default=os.environ.get("VECFS_EMBED_MODEL", DEFAULT_MODEL),
-        help=f"Embedding model string (default: {DEFAULT_MODEL}, env: VECFS_EMBED_MODEL).",
+        default=embed.model,
+        help=f"Embedding model (default from config or {DEFAULT_MODEL}, env: VECFS_EMBED_MODEL).",
     )
     parser.add_argument(
         "--dims",
         type=int,
-        default=_env_int("VECFS_EMBED_DIMS"),
-        help="Reduce output dimensions (env: VECFS_EMBED_DIMS).",
+        default=embed.dims,
+        help="Reduce output dimensions (config or env: VECFS_EMBED_DIMS).",
     )
     parser.add_argument(
         "--threshold",
         type=float,
-        default=float(os.environ.get("VECFS_EMBED_THRESHOLD", str(DEFAULT_THRESHOLD))),
-        help=f"Sparsification threshold (default: {DEFAULT_THRESHOLD}, env: VECFS_EMBED_THRESHOLD).",
+        default=embed.threshold,
+        help=f"Sparsification threshold (default from config or {DEFAULT_THRESHOLD}, env: VECFS_EMBED_THRESHOLD).",
     )
 
     return parser.parse_args()
-
-
-def _env_int(name: str) -> int | None:
-    val = os.environ.get(name)
-    return int(val) if val else None
 
 
 def _read_stdin_lines() -> list[str]:
