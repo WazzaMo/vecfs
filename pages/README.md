@@ -38,10 +38,17 @@ hugo server --baseURL http://localhost:1313/vecfs/
 
 ## Deploy to GitHub Pages
 
-1. Build: `hugo --minify`
-2. Deploy the contents of `public/` to the branch or directory your repository uses for GitHub Pages (e.g. `gh-pages` branch, or `docs/` on the default branch, depending on repo settings).
+A GitHub Actions workflow (`.github/workflows/pages.yml`) builds and publishes this site on every push to `main`:
 
-If you use GitHub Actions, add a workflow that runs `hugo --minify` from `pages/` and publishes `pages/public/` to the Pages branch or folder.
+1. Checkout repo with submodules (theme).
+2. Install Hugo extended and run `hugo --minify` in `pages/`.
+3. Upload `pages/public/` as the Pages artifact and deploy.
+
+**One-time setup:** In the repository go to **Settings → Pages → Build and deployment**: set **Source** to **GitHub Actions**. After that, each successful run of the workflow will update the live site.
+
+## Assets
+
+- **Logo** — `static/logo.svg` is a copy of `vecfs-plugin/assets/logo.svg`, used as the site logo (sidebar) and favicon. Update the copy here if the plugin logo changes.
 
 ## Content
 

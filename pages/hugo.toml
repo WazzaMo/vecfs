@@ -5,6 +5,7 @@ theme = "hugo-book"
 publishDir = "public"
 
 [params]
+  BookLogo = "logo.svg"
   BookToC = true
   BookSearch = true
   BookRepo = "https://github.com/WazzaMo/vecfs"
