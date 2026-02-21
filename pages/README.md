@@ -1,20 +1,10 @@
 # VecFS GitHub Pages (Hugo)
 
-This directory contains the [Hugo](https://gohugo.io/) source for the VecFS project site, built for GitHub Pages.
+This directory contains the [Hugo](https://gohugo.io/) source for the VecFS project site, built for GitHub Pages. The site uses the [Beautiful Hugo](https://github.com/halogenica/beautifulhugo) theme (Hugo module).
 
 ## Prerequisites
 
-- [Hugo](https://gohugo.io/installation/) (extended edition recommended, v0.110+)
-
-## Theme
-
-The site uses the [Hugo Book](https://themes.gohugo.io/themes/hugo-book/) theme as a Git submodule, **pinned to v9** for compatibility with Hugo 0.123.x (newer Book tags require Hugo 0.146+). After cloning the repo, initialise submodules:
-
-```bash
-git submodule update --init --recursive
-```
-
-The submodule will be at tag `v9`. If you use a newer Hugo (0.146+) and want the latest Book theme, run `git checkout main` inside `pages/themes/hugo-book` and set `BookMenuBundle = "/menu"` (string) or remove it if using the file-tree menu; then adjust `hugo.toml` for any theme changes.
+- [Hugo](https://gohugo.io/installation/) (v0.110+). If installed via Go, it may be at `~/go/bin/hugo`; ensure `~/go/bin` is on your PATH.
 
 ## Build
 
@@ -23,6 +13,8 @@ From this directory (`pages/`):
 ```bash
 hugo --minify
 ```
+
+The site uses Beautiful Hugo as a Hugo module; the first build will download the theme.
 
 Output is written to `public/`. To preview locally:
 
@@ -40,17 +32,16 @@ hugo server --baseURL http://localhost:1313/vecfs/
 
 A GitHub Actions workflow (`.github/workflows/pages.yml`) builds and publishes this site on every push to `main`:
 
-1. Checkout repo with submodules (theme).
-2. Install Hugo extended and run `hugo --minify` in `pages/`.
-3. Upload `pages/public/` as the Pages artifact and deploy.
+1. Checkout repo and run `hugo --minify` in `pages/`.
+2. Upload `pages/public/` as the Pages artifact and deploy.
 
 **One-time setup:** In the repository go to **Settings → Pages → Build and deployment**: set **Source** to **GitHub Actions**. After that, each successful run of the workflow will update the live site.
 
-**Validating the workflow:** The workflow also runs on pull requests targeting `main`. On a PR, only the build job runs (checkout, Hugo, build); deploy is skipped. Open a PR that touches `pages/` or the workflow file to confirm the site builds in CI before merging.
+**Validating the workflow:** The workflow also runs on pull requests targeting `main`. On a PR, only the build job runs; deploy is skipped. Open a PR that touches `pages/` or the workflow file to confirm the site builds in CI before merging.
 
 ## Assets
 
-- **Logo** — `static/logo.svg` is a copy of `vecfs-plugin/assets/logo.svg`, used as the site logo (sidebar) and favicon. Update the copy here if the plugin logo changes.
+- **Logo** — `static/logo.svg` is a copy of `vecfs-plugin/assets/logo.svg`, used in the header and as favicon. Update the copy here if the plugin logo changes.
 
 ## Content
 

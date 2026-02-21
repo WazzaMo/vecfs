@@ -1,20 +1,20 @@
 baseURL = "https://wazzamo.github.io/vecfs/"
 languageCode = "en-us"
 title = "VecFS"
-theme = "hugo-book"
+theme = "github.com/halogenica/beautifulhugo"
 publishDir = "public"
 
+[module]
+  [[module.imports]]
+    path = "github.com/halogenica/beautifulhugo"
+    disable = false
+
 [params]
-  BookLogo = "logo.svg"
-  BookToC = true
-  BookSearch = true
-  BookRepo = "https://github.com/WazzaMo/vecfs"
-  BookEditPath = "edit/main"
-  BookComments = false
-  BookPortable = false
-  BookDateForm = "2006-02-01"
-  BookShowToC = true
-  BookSection = "docs"
+  showPageDates = false
+  [params.author]
+    name = "VecFS"
+    website = "https://github.com/WazzaMo/vecfs"
+    github = "WazzaMo/vecfs"
 
 [outputs]
   home = ["HTML", "RSS"]
