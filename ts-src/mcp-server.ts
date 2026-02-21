@@ -7,48 +7,44 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 import cors from "cors";
+import { loadConfig } from "./config.js";
 import { VecFSStorage } from "./storage.js";
 import { toolDefinitions } from "./tool-schemas.js";
 import { createToolHandlers } from "./tool-handlers.js";
 
 /**
- * The VecFS MCP Server.
- *
- * Provides vector storage and search capabilities to connected agents
- * via the Model Context Protocol.
- */
-const dataFile = process.env.VECFS_FILE || "./vecfs-data.jsonl";
-const storage = new VecFSStorage(dataFile);
-const handlers = createToolHandlers(storage);
-
-const server = new Server(
-  { name: "vecfs-server", version: "0.1.0" },
-  { capabilities: { tools: {} } },
-);
-
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: toolDefinitions,
-}));
-
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-  const handler = handlers[name];
-  if (!handler) {
-    throw new Error(`Unknown tool: ${name}`);
-  }
-  return handler(args);
-});
-
-/**
  * Main entry point.
- * Initialises storage then connects the server to either stdio or HTTP/SSE.
+ * Loads config (vecfs.yaml or env), initialises storage, then connects the server
+ * to either stdio or HTTP/SSE.
  */
 async function main() {
+  const config = await loadConfig(process.argv);
+  const storage = new VecFSStorage(config.storage.file);
+  const handlers = createToolHandlers(storage);
+
+  const server = new Server(
+    { name: "vecfs-server", version: "0.1.0" },
+    { capabilities: { tools: {} } },
+  );
+
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: toolDefinitions,
+  }));
+
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+    const handler = handlers[name];
+    if (!handler) {
+      throw new Error(`Unknown tool: ${name}`);
+    }
+    return handler(args);
+  });
+
   await storage.ensureFile();
 
   const args = process.argv.slice(2);
   const mode = args.includes("--http") ? "http" : "stdio";
-  const port = parseInt(process.env.PORT || "3000", 10);
+  const port = config.mcp.port;
 
   if (mode === "stdio") {
     const transport = new StdioServerTransport();

@@ -1,10 +1,10 @@
 {
-  "name": "vecfs",
+  "name": "vecfs-mcp",
   "version": "0.1.1",
-  "description": "VecFS (Vector File System) is a lightweight, local-first vector storage specification and implementation designed for AI agent long-term memory.",
+  "description": "VecFS MCP server: vector storage and search for AI agents via the Model Context Protocol.",
   "main": "dist/mcp-server.js",
   "bin": {
-    "vecfs": "dist/mcp-server.js"
+    "vecfs-mcp": "dist/mcp-server.js"
   },
   "files": [
     "dist/",
@@ -46,6 +46,7 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "yaml": "^2.7.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

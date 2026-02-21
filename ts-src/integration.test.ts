@@ -2,6 +2,7 @@ import { spawn, ChildProcess } from "child_process";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { tmpdir } from "os";
 
 // ---------------------------------------------------------------------------
 // Mock embedding helper
@@ -542,5 +543,200 @@ describe("MCP Integration Test", () => {
     });
     const content = JSON.parse(searchResult.content[0].text);
     expect(content.length).toBeGreaterThan(0);
+  });
+
+  // -----------------------------------------------------------------------
+  // Configuration file (vecfs.yaml)
+  // -----------------------------------------------------------------------
+
+  it("should use storage file from vecfs.yaml when no env set", async () => {
+    const configDir = path.join(
+      tmpdir(),
+      "vecfs-config-test-" + Date.now() + "-" + Math.random().toString(36).slice(2),
+    );
+    await fs.mkdir(configDir, { recursive: true });
+    const configFilePath = path.join(configDir, "vecfs.yaml");
+    const configDataFile = "config-file-storage.jsonl";
+    await fs.writeFile(
+      configFilePath,
+      [
+        "storage:",
+        "  file: " + configDataFile,
+        "mcp:",
+        "  port: 3000",
+      ].join("\n"),
+    );
+
+    const serverPath = path.join(process.cwd(), "dist", "mcp-server.js");
+    function startConfigServer() {
+      return spawn("node", [serverPath, "--config", configFilePath], {
+        stdio: ["pipe", "pipe", "pipe"],
+        cwd: configDir,
+        env: { ...process.env },
+      });
+    }
+    let reqId = 0;
+    function send(proc: ChildProcess, method: string, params: any): Promise<any> {
+      return new Promise((resolve, reject) => {
+        const id = ++reqId;
+        const req = { jsonrpc: "2.0", id, method, params };
+        const timer = setTimeout(() => {
+          proc.stdout?.off("data", onData);
+          reject(new Error("Config server request timeout"));
+        }, 5000);
+        const onData = (data: Buffer) => {
+          const lines = data.toString().split("\n");
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const res = JSON.parse(line);
+              if (res.id === id) {
+                clearTimeout(timer);
+                proc.stdout?.off("data", onData);
+                if (res.error) reject(res.error);
+                else resolve(res.result);
+                return;
+              }
+            } catch {}
+          }
+        };
+        proc.stdout?.on("data", onData);
+        proc.stdin?.write(JSON.stringify(req) + "\n");
+      });
+    }
+    async function waitReady(proc: ChildProcess) {
+      for (let i = 0; i < 30; i++) {
+        try {
+          await send(proc, "tools/list", {});
+          return;
+        } catch {
+          await new Promise((r) => setTimeout(r, 100));
+        }
+      }
+      throw new Error("Config server did not become ready");
+    }
+
+    const uniqueId = "config-file-test-" + Date.now();
+    const testVector = { "77": 1, "78": 0.5 };
+
+    let configServer = startConfigServer();
+    await waitReady(configServer);
+    await send(configServer, "tools/call", {
+      name: "memorize",
+      arguments: {
+        id: uniqueId,
+        text: "Stored via config file",
+        vector: testVector,
+        metadata: {},
+      },
+    });
+    configServer.kill();
+
+    configServer = startConfigServer();
+    await waitReady(configServer);
+    const searchResult = await send(configServer, "tools/call", {
+      name: "search",
+      arguments: { vector: testVector, limit: 1 },
+    });
+    configServer.kill();
+
+    const content = JSON.parse(searchResult.content[0].text);
+    expect(content).toHaveLength(1);
+    expect(content[0].id).toBe(uniqueId);
+
+    try {
+      await fs.rm(configDir, { recursive: true, force: true });
+    } catch {}
+  });
+
+  it("should let VECFS_FILE override storage file from vecfs.yaml", async () => {
+    const configDir = path.join(
+      tmpdir(),
+      "vecfs-env-override-" + Date.now() + "-" + Math.random().toString(36).slice(2),
+    );
+    await fs.mkdir(configDir, { recursive: true });
+    await fs.writeFile(
+      path.join(configDir, "vecfs.yaml"),
+      ["storage:", "  file: from-yaml.jsonl", "mcp:", "  port: 3000"].join("\n"),
+    );
+    const envOverrideFile = path.join(configDir, "env-override.jsonl");
+
+    const serverPath = path.join(process.cwd(), "dist", "mcp-server.js");
+    const configServer = spawn("node", [serverPath], {
+      stdio: ["pipe", "pipe", "pipe"],
+      cwd: configDir,
+      env: { ...process.env, VECFS_FILE: envOverrideFile },
+    });
+    let reqId = 0;
+    const send = (method: string, params: any): Promise<any> => {
+      return new Promise((resolve, reject) => {
+        const id = ++reqId;
+        const req = { jsonrpc: "2.0", id, method, params };
+        const timer = setTimeout(() => {
+          configServer.stdout?.off("data", onData);
+          reject(new Error("Config server request timeout"));
+        }, 5000);
+        const onData = (data: Buffer) => {
+          const lines = data.toString().split("\n");
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const res = JSON.parse(line);
+              if (res.id === id) {
+                clearTimeout(timer);
+                configServer.stdout?.off("data", onData);
+                if (res.error) reject(res.error);
+                else resolve(res.result);
+                return;
+              }
+            } catch {}
+          }
+        };
+        configServer.stdout?.on("data", onData);
+        configServer.stdin?.write(JSON.stringify(req) + "\n");
+      });
+    };
+
+    for (let i = 0; i < 30; i++) {
+      try {
+        await send("tools/list", {});
+        break;
+      } catch {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      if (i === 29) {
+        configServer.kill();
+        throw new Error("Config server did not become ready");
+      }
+    }
+
+    const uniqueId = "env-override-test-" + Date.now();
+    await send("tools/call", {
+      name: "memorize",
+      arguments: {
+        id: uniqueId,
+        text: "Stored via env override",
+        vector: { "1": 1 },
+        metadata: {},
+      },
+    });
+
+    await expect(fs.access(envOverrideFile)).resolves.toBeUndefined();
+    const content = await fs.readFile(envOverrideFile, "utf-8");
+    expect(content).toContain(uniqueId);
+
+    const yamlDataFile = path.join(configDir, "from-yaml.jsonl");
+    try {
+      await fs.access(yamlDataFile);
+      const yamlContent = await fs.readFile(yamlDataFile, "utf-8");
+      expect(yamlContent).not.toContain(uniqueId);
+    } catch {
+      // from-yaml.jsonl may not exist; that's fine
+    }
+
+    configServer.kill();
+    try {
+      await fs.rm(configDir, { recursive: true, force: true });
+    } catch {}
   });
 });
