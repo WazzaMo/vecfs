@@ -1,10 +1,16 @@
 # Build and publish the VecFS site (Hugo) to GitHub Pages.
 # Ensure GitHub Pages is set to "GitHub Actions" in repo Settings > Pages.
+#
+# Validation: the workflow runs on pull requests to main. The build job runs
+# (checkout, Hugo build); deploy is skipped. Use a PR to validate the site
+# builds before merging.
 
 name: Publish VecFS site to GitHub Pages
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -37,11 +43,13 @@ jobs:
         working-directory: pages
 
       - name: Upload Pages artifact
+        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: pages/public
 
   deploy:
+    if: github.event_name == 'push'
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}

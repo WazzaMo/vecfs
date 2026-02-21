@@ -46,6 +46,8 @@ A GitHub Actions workflow (`.github/workflows/pages.yml`) builds and publishes t
 
 **One-time setup:** In the repository go to **Settings → Pages → Build and deployment**: set **Source** to **GitHub Actions**. After that, each successful run of the workflow will update the live site.
 
+**Validating the workflow:** The workflow also runs on pull requests targeting `main`. On a PR, only the build job runs (checkout, Hugo, build); deploy is skipped. Open a PR that touches `pages/` or the workflow file to confirm the site builds in CI before merging.
+
 ## Assets
 
 - **Logo** — `static/logo.svg` is a copy of `vecfs-plugin/assets/logo.svg`, used as the site logo (sidebar) and favicon. Update the copy here if the plugin logo changes.
