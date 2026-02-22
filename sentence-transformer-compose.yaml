@@ -1,0 +1,17 @@
+# Local sentence-transformer embedding server (Text Embeddings Inference).
+# Start: docker compose -f sentence-transformer-compose.yaml up -d
+# Use with vecfs-embed-go: --provider local (default URL http://localhost:8080)
+
+services:
+  sentence-transformer:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+    container_name: vecfs-sentence-transformer
+    ports:
+      - "8080:80"
+    volumes:
+      - tei-data:/data
+    command: ["--model-id", "sentence-transformers/all-MiniLM-L6-v2", "--port", "80"]
+    restart: unless-stopped
+
+volumes:
+  tei-data:
