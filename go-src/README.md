@@ -9,6 +9,7 @@ Go ports of the VecFS programs, aligned with `ts-src` and `py-src` behaviour. Un
 - **internal/config** — Load `vecfs.yaml` and env overrides. Matches `ts-src/config.ts` and `py-src/vecfs_embed/config.py`.
 - **internal/mcp** — MCP tools (search, memorize, feedback, delete) and JSON-RPC over stdio. Matches `ts-src` MCP server behaviour.
 - **internal/embed** — Mock text-to-vector for testing (no real embedding model).
+- **cmd/vecfs** — Main VecFS CLI (proof-of-concept: `container demo` to start/stop a container via containerd).
 - **cmd/vecfs-mcp-go** — MCP server binary (stdio).
 - **cmd/vecfs-embed-go** — Embed CLI using mock embedder; use Python `vecfs_embed` for real models.
 
@@ -23,9 +24,20 @@ go test ./...
 Build binaries:
 
 ```bash
+go build -o vecfs ./cmd/vecfs/
 go build -o vecfs-mcp-go ./cmd/vecfs-mcp-go/
 go build -o vecfs-embed-go ./cmd/vecfs-embed-go/
 ```
+
+### vecfs container demo
+
+Proves start/stop of containers via containerd (no Docker CLI). Requires containerd running and access to its socket (default `/run/containerd/containerd.sock`; override with `CONTAINERD_ADDRESS`):
+
+```bash
+./vecfs container demo
+```
+
+If containerd is not available, the command exits with a message suggesting the Python embedder (vecfs_embed) for embedding without containers.
 
 ## Configuration
 
