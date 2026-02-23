@@ -31,6 +31,22 @@ The inspiration for the natural data compression is Look Up Tables (LUTs)
 in older image file formats for systems that could not express 
 all of the colours all of the time because there were too many bits per pixel.
 
+## Secondary experiment
+
+The hypothesis is that support for building agent tools leans toward
+TypeScript and Python where MCP has been more mature for TypeScript
+and vector embedding more mature on Python. Golang is included as a
+native alternative (single binary, no runtime dependency).
+
+The goal is to offer full VecFS capability (embedder and MCP server) in
+each of the three stacks so that users can choose one language and run
+everything without mixing runtimes. Research (see
+`docs/notes/2026-02-24-single-tech-stack-versions.md`) confirms that
+single-stack solutions are feasible: Go already has both components;
+Python has the embedder and can add an MCP server via the official
+Python SDK; TypeScript has the MCP server and can add an embedder via
+fastembed-js or Transformers.js.
+
 # Fundamental principle
 
 You don't need to store zeros.
