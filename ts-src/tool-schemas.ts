@@ -27,33 +27,41 @@ const vectorSchema = {
 export const toolDefinitions = [
   {
     name: "search",
-    description: "Search the vector space using a sparse or dense vector.",
+    description:
+      "Search memory by natural-language query. Prefer sending query (text); VecFS embeds it. Returns text-only results: id, metadata (including stored text), score, timestamp, similarity. No vectors in the response.",
     inputSchema: {
       type: "object",
       properties: {
         vector: vectorSchema,
+        query: {
+          type: "string",
+          description: "Natural-language search query. Recommended: let VecFS embed it; do not supply vector unless you computed it with the same model as the store.",
+        },
         limit: {
           type: "number",
           description: "Maximum number of results to return.",
           default: 5,
         },
       },
-      required: ["vector"],
+      required: [],
     },
   },
   {
     name: "memorize",
     description:
-      "Store a new entry in the vector space. Updates the entry if the ID already exists.",
+      "Store a lesson, fact, or decision in memory. Prefer sending id and text; VecFS embeds the text. Updates the entry if the ID already exists.",
     inputSchema: {
       type: "object",
       properties: {
         id: { type: "string" },
-        text: { type: "string" },
+        text: {
+          type: "string",
+          description: "Text to store. Recommended: send this and omit vector; VecFS handles embedding.",
+        },
         vector: vectorSchema,
         metadata: { type: "object" },
       },
-      required: ["id", "vector"],
+      required: ["id"],
     },
   },
   {

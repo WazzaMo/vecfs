@@ -7,6 +7,7 @@ await build({
   format: "esm",
   minify: true,
   treeShaking: true,
+  external: ["fastembed"],
   banner: {
     js: "#!/usr/bin/env node\nimport { createRequire } from 'module'; const require = createRequire(import.meta.url);",
   },

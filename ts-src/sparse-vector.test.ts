@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  denseNorm,
   dotProduct,
   norm,
   cosineSimilarity,
@@ -124,6 +125,31 @@ describe("sparse-vector", () => {
     it("should handle negative values", () => {
       const dense = [-1, 0, 2];
       expect(toSparse(dense)).toEqual({ 0: -1, 2: 2 });
+    });
+
+    it("should L2-normalise when normalise is true then apply threshold", () => {
+      const dense = [3, 0, 4];
+      const sparse = toSparse(dense, 0.1, true);
+      expect(norm(sparse)).toBeCloseTo(1);
+      expect(sparse[0]).toBeCloseTo(3 / 5);
+      expect(sparse[2]).toBeCloseTo(4 / 5);
+    });
+
+    it("should drop small components after normalise when threshold is set", () => {
+      const dense = [1, 0.01, 1];
+      const sparse = toSparse(dense, 0.1, true);
+      const n = Math.sqrt(2);
+      expect(sparse[0]).toBeCloseTo(1 / n);
+      expect(sparse[2]).toBeCloseTo(1 / n);
+      expect(sparse[1]).toBeUndefined();
+    });
+  });
+
+  describe("denseNorm", () => {
+    it("should return Euclidean norm of dense vector", () => {
+      expect(denseNorm([3, 4])).toBe(5);
+      expect(denseNorm([0, 0])).toBe(0);
+      expect(denseNorm([1])).toBe(1);
     });
   });
 });

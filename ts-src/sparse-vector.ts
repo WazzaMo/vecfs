@@ -64,21 +64,44 @@ export function cosineSimilarity(
 }
 
 /**
+ * Euclidean norm of a dense vector (used for L2 normalisation before sparsifying).
+ */
+export function denseNorm(dense: number[]): number {
+  let sumSq = 0;
+  for (let i = 0; i < dense.length; i++) {
+    const v = dense[i];
+    sumSq += v * v;
+  }
+  return Math.sqrt(sumSq);
+}
+
+/**
  * Converts a dense array representation into a sparse vector.
  * Only values with an absolute magnitude greater than the threshold are stored.
+ * When normalise is true, the dense vector is L2-normalised before thresholding
+ * (aligns with Python vecfs_embed behaviour).
  *
  * @param dense - An array of numbers representing the dense vector.
  * @param threshold - Minimum absolute value to include. Defaults to 0.
+ * @param normalise - If true, L2-normalise the dense vector before applying threshold. Defaults to false.
  * @returns A SparseVector containing only the significant components.
  */
 export function toSparse(
   dense: number[],
   threshold: number = 0,
+  normalise: boolean = false,
 ): SparseVector {
+  let work = dense;
+  if (normalise && dense.length > 0) {
+    const n = denseNorm(dense);
+    if (n > 0) {
+      work = dense.map((v) => v / n);
+    }
+  }
   const sparse: SparseVector = {};
-  for (let i = 0; i < dense.length; i++) {
-    if (Math.abs(dense[i]) > threshold) {
-      sparse[i] = dense[i];
+  for (let i = 0; i < work.length; i++) {
+    if (Math.abs(work[i]) > threshold) {
+      sparse[i] = work[i];
     }
   }
   return sparse;

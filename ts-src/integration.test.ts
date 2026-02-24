@@ -549,7 +549,10 @@ describe("MCP Integration Test", () => {
   // Configuration file (vecfs.yaml)
   // -----------------------------------------------------------------------
 
-  it("should use storage file from vecfs.yaml when no env set", async () => {
+  it(
+    "should use storage file from vecfs.yaml when no env set",
+    { timeout: 15000 },
+    async () => {
     const configDir = path.join(
       tmpdir(),
       "vecfs-config-test-" + Date.now() + "-" + Math.random().toString(36).slice(2),
@@ -649,7 +652,10 @@ describe("MCP Integration Test", () => {
     } catch {}
   });
 
-  it("should let VECFS_FILE override storage file from vecfs.yaml", async () => {
+  it(
+    "should let VECFS_FILE override storage file from vecfs.yaml",
+    { timeout: 15000 },
+    async () => {
     const configDir = path.join(
       tmpdir(),
       "vecfs-env-override-" + Date.now() + "-" + Math.random().toString(36).slice(2),

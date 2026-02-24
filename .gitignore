@@ -16,3 +16,5 @@ __pycache__/
 
 go-src/vecfs-*-go
 go-src/vecfs
+
+local_cache/

@@ -46,6 +46,7 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "fastembed": "^2.1.0",
     "yaml": "^2.7.0",
     "zod": "^4.3.6"
   },
