@@ -4,7 +4,7 @@ VecFS is short for Vector File System or Spec - it's both.
 
 # Intro
 
-Imagine being able to give your AI agent long-term memory by storing context locally in a manner most efficent and available for Agents. This could allow agents to learn and improve over time because they might recall past mistakes.
+Imagine being able to give your AI agent long-term memory by storing context locally in a manner most efficient and available for Agents. This could allow agents to learn and improve over time because they might recall past mistakes.
 
 # Objectives
 

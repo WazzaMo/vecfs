@@ -27,7 +27,9 @@ the file does not get cluttered. Place an empty line after a heading.
 
 6. Tables communicate better when a category or label is being described when the row is shorter than 60 chars.
     For long rows, use the next level 3 or heading (### or ####) with long-form text, one or more
-    paragraphs below the heading, which allows for more items to be added. 
+    paragraphs below the heading, which allows for more items to be added.
+
+7. Space out bulleted or numbered lists, so they are easier to read.
 
 # Table example
 
@@ -61,7 +63,7 @@ the essential topic of the note.
 ## Release Notes
 
 Release notes are held in `docs/release-notes` and follow the formatting rules in this document
-guide. They're naming convention is {semver}-Release-{date}.md where "semver" means semantic versioning
+guide. Their naming convention is {semver}-Release-{date}.md where "semver" means semantic versioning
 with Major.Minor.Revision numbers and date is in YYYY-MM-DD format.
 
 They should summarise key features delivered in this release, which of VecFS includes:
