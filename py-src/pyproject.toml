@@ -26,6 +26,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
+    "mcp[cli]",
     "pydantic-ai-slim[sentence-transformers]",
     "pyyaml>=6.0",
     "pytest>=9.0.2",
@@ -52,10 +53,14 @@ Issues = "https://github.com/WazzaMo/vecfs/issues"
 
 [project.scripts]
 vecfs-embed = "vecfs_embed.cli:main"
+vecfs-py = "vecfs_py.cli:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 markers = ["asyncio: mark test as an async test"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["vecfs_embed", "vecfs_py"]
 
 [build-system]
 requires = ["hatchling"]
