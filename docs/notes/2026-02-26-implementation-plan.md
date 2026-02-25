@@ -22,12 +22,12 @@ Ordered steps and file/area hints for the five actions in
 | 2.2 | Each server embeds text internally; embedder required | Done |
 | 2.3 | Updated tool-reference.md | Done |
 
-# Action 3 — Consistent VecFS CLI (all stacks) — In progress
+# Action 3 — Consistent VecFS CLI (all stacks) — Done
 
 | Step | Task | Status |
 |------|------|--------|
 | 3.1 | Binaries vecfs-{go,py,ts}: TS bin renamed to vecfs-ts; Go build as vecfs-go; Py already vecfs-py | Done |
-| 3.2 | Align options (--config, --file, port); document in skills | Pending |
+| 3.2 | Align options (--config, --file, port); document in skills | Done (docs/skills.md CLI reference) |
 
 # Action 4 — Go MCP in-process embedding (Go only) — Done
 
@@ -36,13 +36,13 @@ Ordered steps and file/area hints for the five actions in
 | 4.1 | Shared text→vector in internal/embed; vecfs-embed-go and MCP use it | Done |
 | 4.2 | MCP tool handlers call embedder for query/text; embedder required | Done |
 
-# Action 5 — vecfs-embed-{language} consistency (all stacks) — In progress
+# Action 5 — vecfs-embed-{language} consistency (all stacks) — Done
 
 | Step | Task | Status |
 |------|------|--------|
-| 5.1 | Embed CLI in TS (vecfs-embed-ts); TS currently in-process only, no separate embed binary yet | Deferred |
+| 5.1 | vecfs-embed-ts added (ts-src/embed-cli.ts, dist/embed-cli.js, bin in package.json) | Done |
 | 5.2 | Python script vecfs-embed-py added (vecfs-embed kept for backward compat); Go already vecfs-embed-go | Done |
-| 5.3 | Align parameters across embed CLIs; document common set | Pending |
+| 5.3 | Align parameters across embed CLIs; document common set | Done (docs/requirements.md Embed CLI section) |
 
 # Execution order
 

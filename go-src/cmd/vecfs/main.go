@@ -13,6 +13,9 @@ func main() {
 		os.Exit(1)
 	}
 	switch os.Args[1] {
+	case "version":
+		fmt.Fprintf(os.Stderr, "vecfs-go (VecFS Go CLI)\n")
+		os.Exit(0)
 	case "container":
 		if len(os.Args) < 3 {
 			printContainerUsage()
@@ -34,10 +37,13 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, "Usage: vecfs <command> [options]\n\n")
+	fmt.Fprintf(os.Stderr, "Usage: vecfs [--config PATH] <command> [options]\n\n")
 	fmt.Fprintf(os.Stderr, "Commands:\n")
 	fmt.Fprintf(os.Stderr, "  container start  Start embedding model container (docker/podman)\n")
 	fmt.Fprintf(os.Stderr, "  container stop   Stop and remove embedding container (cleanup)\n")
+	fmt.Fprintf(os.Stderr, "  version          Print version and exit\n")
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "Options (global): --config PATH  Path to vecfs.yaml (or set VECFS_CONFIG)\n")
 	fmt.Fprintf(os.Stderr, "\n")
 }
 

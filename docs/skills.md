@@ -2,6 +2,42 @@
 
 A skill defines the behavioral logic and decision-making patterns an agent uses to interact with the VecFS MCP server. While the MCP server provides the tools, the skill ensures the agent uses them effectively to maintain long-term memory and improve performance.
 
+# VecFS CLI Reference
+
+The same behaviour is available from three language stacks. Use one of the following as the MCP server entry point.
+
+## Main CLIs (MCP server)
+
+| Program    | Description                          |
+|------------|--------------------------------------|
+| vecfs-go   | Go stack: build from go-src (see README) |
+| vecfs-py   | Python: `pip install vecfs-embed` (provides vecfs-py) |
+| vecfs-ts   | TypeScript: `npm install` then `npx vecfs-ts` or link global bin |
+
+All three support the same configuration and environment variables so that skills and docs can refer to one behaviour.
+
+## Common options
+
+- **Config file**: `--config PATH` or env `VECFS_CONFIG`. Lookup order: env, then `./vecfs.yaml`, `./.vecfs.yaml`, `~/.config/vecfs/vecfs.yaml`.
+- **Storage file**: config `storage.file` or env `VECFS_FILE` (overrides config).
+- **MCP port** (HTTP mode): config `mcp.port` or env `PORT` (overrides config).
+
+## Subcommands (by program)
+
+- **vecfs-go**: `container start`, `container stop`, `version`. Container options use config `container.runtime` (docker|podman), `container.image`, `VECFS_EMBED_IMAGE`, etc.
+- **vecfs-py**: `mcp` (stdio or `--http`), `version`.
+- **vecfs-ts**: runs MCP server on stdio by default; pass `--config PATH` before other args if needed. HTTP mode and port come from config.
+
+## Embed CLIs (text to vector)
+
+For direct command-line embedding (e.g. to search memory or produce vectors outside MCP):
+
+- **vecfs-embed-go**: `go build -o vecfs-embed-go ./cmd/vecfs-embed-go/`
+- **vecfs-embed-py**: installed with Python package (also as `vecfs-embed` for backward compatibility).
+- **vecfs-embed-ts**: `npm install` then `npx vecfs-embed-ts` (or link global bin); built with the same package as vecfs-ts.
+
+Common parameters across embed CLIs: `--config`, `--model`, `--threshold`, `--batch` (stdin, one text per line), `--mode` (query|document). See each implementation’s help for full list.
+
 # Skill Objectives
 
 The primary goal of the VecFS skill is to transform a "stateless" agent into a "stateful" one that learns from every interaction.

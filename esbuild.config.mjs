@@ -1,7 +1,6 @@
 import { build } from "esbuild";
 
-await build({
-  entryPoints: ["ts-src/mcp-server.ts"],
+const shared = {
   bundle: true,
   platform: "node",
   format: "esm",
@@ -11,5 +10,16 @@ await build({
   banner: {
     js: "#!/usr/bin/env node\nimport { createRequire } from 'module'; const require = createRequire(import.meta.url);",
   },
+};
+
+await build({
+  ...shared,
+  entryPoints: ["ts-src/mcp-server.ts"],
   outfile: "dist/mcp-server.js",
+});
+
+await build({
+  ...shared,
+  entryPoints: ["ts-src/embed-cli.ts"],
+  outfile: "dist/embed-cli.js",
 });

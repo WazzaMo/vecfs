@@ -123,6 +123,23 @@ The server should be easy to install and configure as a standard MCP server (e.g
 
 Data must be stored in a way that is robust against corruption and easy to back up (simple file copy).
 
+# Embed CLI (vecfs-embed-*)
+
+Implementations provide a CLI for converting text to sparse vectors (e.g. vecfs-embed-go, vecfs-embed-py). These allow users to search memory or produce vectors from the command line. All embed CLIs should align on the following.
+
+## Common parameters
+
+| Parameter   | Description |
+|------------|-------------|
+| --config   | Path to vecfs.yaml (or VECFS_CONFIG) |
+| --model    | Embedding model (or VECFS_EMBED_MODEL) |
+| --threshold | Sparsification threshold (default 0.01) |
+| --mode     | query or document (default query) |
+| --batch    | Read one text per line from stdin, output JSON array |
+| --dims     | Optional dimension override (config or VECFS_EMBED_DIMS) |
+
+Input: positional text argument or stdin when omitted. Output: JSON with vector (sparse map), model, threshold, and optional metadata. Batch mode outputs a JSON array of such objects.
+
 # Success Criteria
 
 ## Recall Accuracy
