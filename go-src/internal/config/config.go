@@ -33,13 +33,23 @@ type Config struct {
 		HFEndpoint string  `yaml:"huggingface_endpoint"`
 		HFToken    string  `yaml:"huggingface_token"`
 	} `yaml:"embed"`
+	Container struct {
+		Runtime string `yaml:"runtime"` // "docker" or "podman"
+		Image   string `yaml:"image"`   // image for embedding service
+		Name    string `yaml:"name"`    // container name for start/stop
+		Port    int    `yaml:"port"`    // host port to publish (e.g. 8080 for local embed)
+	} `yaml:"container"`
 }
 
 const (
-	DefaultEmbedModel       = "sentence-transformers:all-MiniLM-L6-v2"
-	DefaultEmbedThreshold   = 0.01
-	DefaultEmbedLocalURL    = "http://localhost:8080"
-	DefaultEmbedHFEndpoint  = "https://api-inference.huggingface.co"
+	DefaultEmbedModel         = "sentence-transformers:all-MiniLM-L6-v2"
+	DefaultEmbedThreshold     = 0.01
+	DefaultEmbedLocalURL      = "http://localhost:8080"
+	DefaultEmbedHFEndpoint    = "https://api-inference.huggingface.co"
+	DefaultContainerRuntime   = "docker"
+	DefaultContainerName      = "vecfs-embed"
+	DefaultContainerImage     = ""   // no default; user must set when using containers
+	DefaultContainerPort      = 8080 // host port for embedding service
 )
 
 // GetConfigPath returns the first path that exists in lookup order, or empty string.
@@ -112,6 +122,12 @@ func LoadConfig(argv []string) (*Config, error) {
 					HFEndpoint string      `yaml:"huggingface_endpoint"`
 					HFToken    string      `yaml:"huggingface_token"`
 				} `yaml:"embed"`
+				Container struct {
+					Runtime string `yaml:"runtime"`
+					Image   string `yaml:"image"`
+					Name    string `yaml:"name"`
+					Port    interface{} `yaml:"port"`
+				} `yaml:"container"`
 			}
 			if err := yaml.Unmarshal(data, &raw); err == nil {
 				if raw.Storage.File != "" {
@@ -156,8 +172,40 @@ func LoadConfig(argv []string) (*Config, error) {
 						cfg.Embed.Threshold = f
 					}
 				}
+				if raw.Container.Runtime != "" {
+					cfg.Container.Runtime = raw.Container.Runtime
+				}
+				if raw.Container.Image != "" {
+					cfg.Container.Image = raw.Container.Image
+				}
+				if raw.Container.Name != "" {
+					cfg.Container.Name = raw.Container.Name
+				}
+				if raw.Container.Port != nil {
+					switch v := raw.Container.Port.(type) {
+					case int:
+						cfg.Container.Port = v
+					case string:
+						if p, err := strconv.Atoi(v); err == nil {
+							cfg.Container.Port = p
+						}
+					}
+				}
 			}
 		}
+	}
+	// Container defaults when not set by file
+	if cfg.Container.Runtime == "" {
+		cfg.Container.Runtime = DefaultContainerRuntime
+	}
+	if cfg.Container.Name == "" {
+		cfg.Container.Name = DefaultContainerName
+	}
+	if cfg.Container.Image == "" {
+		cfg.Container.Image = DefaultContainerImage
+	}
+	if cfg.Container.Port == 0 {
+		cfg.Container.Port = DefaultContainerPort
 	}
 	if v := os.Getenv("VECFS_FILE"); v != "" {
 		cfg.Storage.File = v
@@ -194,6 +242,20 @@ func LoadConfig(argv []string) (*Config, error) {
 	if v := os.Getenv("VECFS_EMBED_THRESHOLD"); v != "" {
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
 			cfg.Embed.Threshold = f
+		}
+	}
+	if v := os.Getenv("VECFS_CONTAINER_RUNTIME"); v != "" {
+		cfg.Container.Runtime = v
+	}
+	if v := os.Getenv("VECFS_EMBED_IMAGE"); v != "" {
+		cfg.Container.Image = v
+	}
+	if v := os.Getenv("VECFS_CONTAINER_NAME"); v != "" {
+		cfg.Container.Name = v
+	}
+	if v := os.Getenv("VECFS_CONTAINER_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			cfg.Container.Port = p
 		}
 	}
 	return cfg, nil

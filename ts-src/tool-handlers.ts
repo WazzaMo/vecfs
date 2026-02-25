@@ -1,8 +1,7 @@
 import { z } from "zod";
 import type { Embedder } from "./embedder/index.js";
 import { VecFSStorage } from "./storage.js";
-import { toSparse } from "./sparse-vector.js";
-import { SparseVector } from "./types.js";
+import type { SparseVector } from "./types.js";
 
 /**
  * The shape returned by every tool handler, compatible with the MCP SDK's
@@ -28,42 +27,14 @@ export type EmbedderOrGetter = Embedder | null | (() => Promise<Embedder | null>
 // Argument schemas (zod)
 // ---------------------------------------------------------------------------
 
-const vectorShapeSchema = z.union([
-  z.record(z.string(), z.number()),
-  z.array(z.number()),
-]);
-
-/**
- * If args is an object with a string `vector` property, parses it as JSON
- * so the vector is sent as object/array. MCP clients may send vector as a
- * JSON string; this ensures we accept both.
- */
-function ensureVectorIsObjectOrArray(
-  args: unknown,
-): unknown {
-  if (args === null || typeof args !== "object" || !("vector" in args))
-    return args;
-  const v = (args as Record<string, unknown>).vector;
-  if (typeof v !== "string") return args;
-  try {
-    return { ...(args as Record<string, unknown>), vector: JSON.parse(v) };
-  } catch {
-    throw new Error(
-      "Vector must be a JSON object (sparse) or array of numbers (dense).",
-    );
-  }
-}
-
 const searchArgsSchema = z.object({
-  vector: vectorShapeSchema.optional(),
-  query: z.string().optional(),
+  query: z.string(),
   limit: z.number().optional(),
 });
 
 const memorizeArgsSchema = z.object({
   id: z.string(),
-  text: z.string().optional(),
-  vector: vectorShapeSchema.optional(),
+  text: z.string(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -97,22 +68,6 @@ function validateArgs<T>(
   }
 }
 
-/**
- * Normalises a vector input (dense array or sparse object) into a SparseVector.
- */
-function normalizeVector(
-  input: Record<string, number> | number[],
-): SparseVector {
-  if (Array.isArray(input)) {
-    return toSparse(input);
-  }
-  const sparse: SparseVector = {};
-  for (const [key, value] of Object.entries(input)) {
-    sparse[Number(key)] = value;
-  }
-  return sparse;
-}
-
 // ---------------------------------------------------------------------------
 // Embedder resolution (cache so model is loaded once and reused)
 // ---------------------------------------------------------------------------
@@ -134,54 +89,31 @@ async function getEmbedder(embedderOrGetter: EmbedderOrGetter): Promise<Embedder
 }
 
 /**
- * Resolves the search vector from parsed args: either from vector, or by embedding query when embedder is present.
+ * Resolves the search vector by embedding the query. Embedder is required (text-only API).
  */
 async function resolveSearchVector(
-  parsed: {
-    vector?: Record<string, number> | number[];
-    query?: string;
-    limit?: number;
-  },
+  query: string,
   embedderOrGetter: EmbedderOrGetter,
 ): Promise<SparseVector> {
-  if (parsed.vector !== undefined) {
-    return normalizeVector(parsed.vector);
+  const embedder = await getEmbedder(embedderOrGetter);
+  if (!embedder) {
+    throw new Error("search requires embedder to be enabled (text-only API).");
   }
-  if (parsed.query !== undefined) {
-    const embedder = await getEmbedder(embedderOrGetter);
-    if (embedder) {
-      return embedder.embedText(parsed.query, { mode: "query" });
-    }
-  }
-  throw new Error(
-    "search requires either 'vector' or 'query' (query requires embedder to be enabled).",
-  );
+  return embedder.embedText(query, { mode: "query" });
 }
 
 /**
- * Resolves the memorize vector from parsed args: either from vector, or by embedding text when embedder is present.
+ * Resolves the memorize vector by embedding the text. Embedder is required (text-only API).
  */
 async function resolveMemorizeVector(
-  parsed: {
-    id: string;
-    text?: string;
-    vector?: Record<string, number> | number[];
-    metadata?: Record<string, unknown>;
-  },
+  text: string,
   embedderOrGetter: EmbedderOrGetter,
 ): Promise<SparseVector> {
-  if (parsed.vector !== undefined) {
-    return normalizeVector(parsed.vector);
+  const embedder = await getEmbedder(embedderOrGetter);
+  if (!embedder) {
+    throw new Error("memorize requires embedder to be enabled (text-only API).");
   }
-  if (parsed.text !== undefined) {
-    const embedder = await getEmbedder(embedderOrGetter);
-    if (embedder) {
-      return embedder.embedText(parsed.text, { mode: "document" });
-    }
-  }
-  throw new Error(
-    "memorize requires either 'vector' or 'text' (text requires embedder to be enabled).",
-  );
+  return embedder.embedText(text, { mode: "document" });
 }
 
 /**
@@ -195,12 +127,11 @@ export function createToolHandlers(
 ): ToolHandlerMap {
   return {
     async search(args: unknown): Promise<ToolResult> {
-      const parsed = validateArgs(
-        searchArgsSchema,
-        ensureVectorIsObjectOrArray(args),
-        "search",
+      const parsed = validateArgs(searchArgsSchema, args, "search");
+      const sparseVector = await resolveSearchVector(
+        parsed.query,
+        embedderOrGetter,
       );
-      const sparseVector = await resolveSearchVector(parsed, embedderOrGetter);
       const limit = parsed.limit;
       const results = await storage.search(sparseVector, limit);
       const textOut = results.map(({ id, metadata, score, timestamp, similarity }) => ({
@@ -216,12 +147,11 @@ export function createToolHandlers(
     },
 
     async memorize(args: unknown): Promise<ToolResult> {
-      const parsed = validateArgs(
-        memorizeArgsSchema,
-        ensureVectorIsObjectOrArray(args),
-        "memorize",
+      const parsed = validateArgs(memorizeArgsSchema, args, "memorize");
+      const sparseVector = await resolveMemorizeVector(
+        parsed.text,
+        embedderOrGetter,
       );
-      const sparseVector = await resolveMemorizeVector(parsed, embedderOrGetter);
       await storage.store({
         id: parsed.id,
         vector: sparseVector,

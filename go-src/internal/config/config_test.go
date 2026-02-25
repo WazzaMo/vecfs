@@ -51,12 +51,20 @@ func TestLoadConfig_DefaultsWhenNoFile(t *testing.T) {
 	os.Unsetenv("VECFS_CONFIG")
 	os.Unsetenv("VECFS_FILE")
 	os.Unsetenv("PORT")
+	os.Unsetenv("VECFS_CONTAINER_RUNTIME")
+	os.Unsetenv("VECFS_CONTAINER_NAME")
 	cfg, err := LoadConfig([]string{"vecfs-mcp", "--config", "/nonexistent/vecfs.yaml"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cfg.Storage.File != DefaultStorageFile || cfg.MCP.Port != DefaultMCPPort {
 		t.Errorf("cfg = %+v", cfg)
+	}
+	if cfg.Container.Runtime != DefaultContainerRuntime || cfg.Container.Name != DefaultContainerName {
+		t.Errorf("container defaults: runtime=%q name=%q", cfg.Container.Runtime, cfg.Container.Name)
+	}
+	if cfg.Container.Port != DefaultContainerPort {
+		t.Errorf("container port = %d, want %d", cfg.Container.Port, DefaultContainerPort)
 	}
 }
 
@@ -178,5 +186,42 @@ func TestLoadConfig_PortAsStringInYAML(t *testing.T) {
 	cfg, _ := LoadConfig([]string{"vecfs-mcp", "--config", cfgPath})
 	if cfg.MCP.Port != 7000 {
 		t.Errorf("MCP.Port = %v", cfg.MCP.Port)
+	}
+}
+
+func TestLoadConfig_ContainerFromFile(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "vecfs.yaml")
+	content := "container:\n  runtime: podman\n  image: my-embed:latest\n  name: my-vecfs\n  port: 9000\n"
+	if err := os.WriteFile(cfgPath, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+	os.Unsetenv("VECFS_CONTAINER_RUNTIME")
+	os.Unsetenv("VECFS_EMBED_IMAGE")
+	os.Unsetenv("VECFS_CONTAINER_NAME")
+	os.Unsetenv("VECFS_CONTAINER_PORT")
+	cfg, err := LoadConfig([]string{"vecfs", "--config", cfgPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Container.Runtime != "podman" || cfg.Container.Image != "my-embed:latest" || cfg.Container.Name != "my-vecfs" || cfg.Container.Port != 9000 {
+		t.Errorf("container = %+v", cfg.Container)
+	}
+}
+
+func TestLoadConfig_ContainerEnvOverride(t *testing.T) {
+	os.Setenv("VECFS_CONTAINER_RUNTIME", "podman")
+	os.Setenv("VECFS_EMBED_IMAGE", "env-image")
+	os.Setenv("VECFS_CONTAINER_NAME", "env-name")
+	os.Setenv("VECFS_CONTAINER_PORT", "8888")
+	defer func() {
+		os.Unsetenv("VECFS_CONTAINER_RUNTIME")
+		os.Unsetenv("VECFS_EMBED_IMAGE")
+		os.Unsetenv("VECFS_CONTAINER_NAME")
+		os.Unsetenv("VECFS_CONTAINER_PORT")
+	}()
+	cfg, _ := LoadConfig([]string{"vecfs"})
+	if cfg.Container.Runtime != "podman" || cfg.Container.Image != "env-image" || cfg.Container.Name != "env-name" || cfg.Container.Port != 8888 {
+		t.Errorf("container = %+v", cfg.Container)
 	}
 }

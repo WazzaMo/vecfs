@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/WazzaMo/vecfs/internal/embed"
 	"github.com/WazzaMo/vecfs/internal/storage"
 )
 
@@ -26,7 +27,8 @@ type jsonRPCResponse struct {
 }
 
 // RunStdio runs the MCP server over stdio: read JSON-RPC requests from stdin, write responses to stdout.
-func RunStdio(st *storage.Storage) error {
+// If emb is non-nil, search and memorize tools accept query/text and embed them in-process.
+func RunStdio(st *storage.Storage, emb embed.Embedder) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetEscapeHTML(false)
@@ -40,7 +42,7 @@ func RunStdio(st *storage.Storage) error {
 			_ = enc.Encode(jsonRPCResponse{JSONRPC: "2.0", ID: nil, Error: map[string]string{"message": err.Error()}})
 			continue
 		}
-		resp := handleRequest(st, req.Method, req.Params, req.ID)
+		resp := handleRequest(st, emb, req.Method, req.Params, req.ID)
 		if err := enc.Encode(resp); err != nil {
 			fmt.Fprintf(os.Stderr, "encode: %v\n", err)
 		}
@@ -48,7 +50,7 @@ func RunStdio(st *storage.Storage) error {
 	return scanner.Err()
 }
 
-func handleRequest(st *storage.Storage, method string, paramsRaw json.RawMessage, id interface{}) jsonRPCResponse {
+func handleRequest(st *storage.Storage, emb embed.Embedder, method string, paramsRaw json.RawMessage, id interface{}) jsonRPCResponse {
 	switch method {
 	case "tools/list":
 		tools := make([]map[string]interface{}, 0, len(toolDefs))
@@ -68,7 +70,7 @@ func handleRequest(st *storage.Storage, method string, paramsRaw json.RawMessage
 		if err := json.Unmarshal(paramsRaw, &body); err != nil {
 			return jsonRPCResponse{JSONRPC: "2.0", ID: id, Error: map[string]string{"message": err.Error()}}
 		}
-		content, err := CallTool(st, body.Name, body.Arguments)
+		content, err := CallTool(st, emb, body.Name, body.Arguments)
 		if err != nil {
 			return jsonRPCResponse{JSONRPC: "2.0", ID: id, Error: map[string]string{"message": err.Error()}}
 		}
@@ -79,7 +81,7 @@ func handleRequest(st *storage.Storage, method string, paramsRaw json.RawMessage
 }
 
 // RunStdioFromReaderWriter is for tests: use custom in/out instead of os.Stdin/Stdout.
-func RunStdioFromReaderWriter(st *storage.Storage, in io.Reader, out io.Writer) error {
+func RunStdioFromReaderWriter(st *storage.Storage, emb embed.Embedder, in io.Reader, out io.Writer) error {
 	scanner := bufio.NewScanner(in)
 	enc := json.NewEncoder(out)
 	enc.SetEscapeHTML(false)
@@ -93,7 +95,7 @@ func RunStdioFromReaderWriter(st *storage.Storage, in io.Reader, out io.Writer) 
 			_ = enc.Encode(jsonRPCResponse{JSONRPC: "2.0", ID: nil, Error: map[string]string{"message": err.Error()}})
 			continue
 		}
-		resp := handleRequest(st, req.Method, req.Params, req.ID)
+		resp := handleRequest(st, emb, req.Method, req.Params, req.ID)
 		_ = enc.Encode(resp)
 	}
 	return scanner.Err()

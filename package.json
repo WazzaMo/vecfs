@@ -1,10 +1,10 @@
 {
-  "name": "vecfs-mcp",
+  "name": "vecfs-ts",
   "version": "0.1.1",
   "description": "VecFS MCP server: vector storage and search for AI agents via the Model Context Protocol.",
   "main": "dist/mcp-server.js",
   "bin": {
-    "vecfs-mcp": "dist/mcp-server.js"
+    "vecfs-ts": "dist/mcp-server.js"
   },
   "files": [
     "dist/",

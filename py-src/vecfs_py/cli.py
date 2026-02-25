@@ -54,6 +54,11 @@ def _run_mcp(http: bool, config_path: str | None) -> None:
     storage = VecFSStorage(config.storage_file)
     asyncio.run(storage.ensure_file())
     embedder = get_embedder_fn()
+    if embedder is None:
+        sys.exit(
+            "vecfs-py: embedder required (text-only API). "
+            "Install vecfs_embed (pip install vecfs-embed) and ensure embed config is set."
+        )
     app = create_app(storage, embedder=embedder)
     if http:
         os.environ.setdefault("PORT", str(config.mcp_port))

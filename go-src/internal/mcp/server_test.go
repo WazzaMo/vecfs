@@ -5,7 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/WazzaMo/vecfs/internal/sparse"
+	"github.com/WazzaMo/vecfs/internal/config"
+	"github.com/WazzaMo/vecfs/internal/embed"
 	"github.com/WazzaMo/vecfs/internal/storage"
 )
 
@@ -38,7 +39,7 @@ func TestToolsList(t *testing.T) {
 	st := storage.New(filepath.Join(dir, "data.jsonl"))
 	_ = st.EnsureFile()
 	paramsRaw, _ := json.Marshal(map[string]interface{}{})
-	resp := handleRequest(st, "tools/list", paramsRaw, 1)
+	resp := handleRequest(st, nil, "tools/list", paramsRaw, 1)
 	if resp.Error != nil {
 		t.Errorf("tools/list error: %v", resp.Error)
 	}
@@ -52,13 +53,15 @@ func TestCallMemorizeAndSearch(t *testing.T) {
 	dir := t.TempDir()
 	st := storage.New(filepath.Join(dir, "data.jsonl"))
 	_ = st.EnsureFile()
+	cfg := &config.Config{}
+	emb, err := embed.NewEmbedder(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// Memorize
-	content, err := CallTool(st, "memorize", map[string]interface{}{
-		"id":     "go-test-1",
-		"text":   "hello",
-		"vector": sparse.Vector{"0": 1, "1": 0.5},
-		"metadata": map[string]interface{}{"source": "test"},
+	// Memorize (text-only)
+	content, err := CallTool(st, emb, "memorize", map[string]interface{}{
+		"id": "go-test-1", "text": "hello", "metadata": map[string]interface{}{"source": "test"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -67,10 +70,9 @@ func TestCallMemorizeAndSearch(t *testing.T) {
 		t.Errorf("memorize content = %v", content)
 	}
 
-	// Search
-	content, err = CallTool(st, "search", map[string]interface{}{
-		"vector": sparse.Vector{"0": 1, "1": 0.5},
-		"limit":  float64(1),
+	// Search (query-only)
+	content, err = CallTool(st, emb, "search", map[string]interface{}{
+		"query": "hello", "limit": float64(1),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -95,11 +97,13 @@ func TestCallFeedbackAndDelete(t *testing.T) {
 	dir := t.TempDir()
 	st := storage.New(filepath.Join(dir, "data.jsonl"))
 	_ = st.EnsureFile()
-	_, _ = CallTool(st, "memorize", map[string]interface{}{
-		"id": "fb", "vector": sparse.Vector{"0": 1}, "metadata": map[string]interface{}{},
+	cfg := &config.Config{}
+	emb, _ := embed.NewEmbedder(cfg)
+	_, _ = CallTool(st, emb, "memorize", map[string]interface{}{
+		"id": "fb", "text": "feedback entry", "metadata": map[string]interface{}{},
 	})
 
-	content, err := CallTool(st, "feedback", map[string]interface{}{
+	content, err := CallTool(st, emb, "feedback", map[string]interface{}{
 		"id": "fb", "scoreAdjustment": float64(5),
 	})
 	if err != nil || len(content) == 0 {
@@ -109,12 +113,12 @@ func TestCallFeedbackAndDelete(t *testing.T) {
 		t.Errorf("feedback = %v", content[0]["text"])
 	}
 
-	content, err = CallTool(st, "delete", map[string]interface{}{"id": "fb"})
+	content, err = CallTool(st, emb, "delete", map[string]interface{}{"id": "fb"})
 	if err != nil || content[0]["text"] != "Deleted entry: fb" {
 		t.Errorf("delete = %v", content)
 	}
 
-	content, err = CallTool(st, "search", map[string]interface{}{"vector": sparse.Vector{"0": 1}, "limit": float64(5)})
+	content, err = CallTool(st, emb, "search", map[string]interface{}{"query": "feedback entry", "limit": float64(5)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,5 +127,46 @@ func TestCallFeedbackAndDelete(t *testing.T) {
 	_ = json.Unmarshal([]byte(text), &results)
 	if len(results) != 0 {
 		t.Errorf("expected 0 results after delete, got %v", results)
+	}
+}
+
+func TestCallTool_QueryTextWithEmbedder(t *testing.T) {
+	dir := t.TempDir()
+	st := storage.New(filepath.Join(dir, "data.jsonl"))
+	_ = st.EnsureFile()
+	cfg := &config.Config{}
+	emb, err := embed.NewEmbedder(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Memorize by text only (no vector)
+	content, err := CallTool(st, emb, "memorize", map[string]interface{}{
+		"id": "text-entry", "text": "hello world", "metadata": map[string]interface{}{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(content) == 0 || content[0]["text"] != "Stored entry: text-entry" {
+		t.Errorf("memorize content = %v", content)
+	}
+
+	// Search by query only (no vector)
+	content, err = CallTool(st, emb, "search", map[string]interface{}{
+		"query": "hello world", "limit": float64(5),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(content) == 0 {
+		t.Fatal("no search content")
+	}
+	text, _ := content[0]["text"].(string)
+	var results []map[string]interface{}
+	if err := json.Unmarshal([]byte(text), &results); err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 || results[0]["id"] != "text-entry" {
+		t.Errorf("results = %v", results)
 	}
 }

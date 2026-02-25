@@ -52,6 +52,7 @@ Repository = "https://github.com/WazzaMo/vecfs"
 Issues = "https://github.com/WazzaMo/vecfs/issues"
 
 [project.scripts]
+vecfs-embed-py = "vecfs_embed.cli:main"
 vecfs-embed = "vecfs_embed.cli:main"
 vecfs-py = "vecfs_py.cli:main"
 

@@ -1,10 +1,13 @@
 // Package mcp implements the MCP server tools (search, memorize, feedback, delete).
+// When an embedder is provided, search accepts optional "query" (text) and memorize accepts optional "text";
+// the embedder converts them to vectors so callers can use text-only semantics.
 package mcp
 
 import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/WazzaMo/vecfs/internal/embed"
 	"github.com/WazzaMo/vecfs/internal/sparse"
 	"github.com/WazzaMo/vecfs/internal/storage"
 )
@@ -19,31 +22,27 @@ type ToolDef struct {
 var toolDefs = []ToolDef{
 	{
 		Name:        "search",
-		Description: "Search the vector space using a sparse or dense vector.",
+		Description: "Semantic search: find entries with similar meaning to the query text. Vectorisation happens inside VecFS.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"vector": map[string]any{"oneOf": []any{
-					map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "number"}},
-					map[string]any{"type": "array", "items": map[string]any{"type": "number"}},
-				}},
+				"query": map[string]any{"type": "string", "description": "Search by text (semantic)"},
 				"limit": map[string]any{"type": "number", "default": 5},
 			},
-			"required": []any{"vector"},
+			"required": []any{"query"},
 		},
 	},
 	{
 		Name:        "memorize",
-		Description: "Store a new entry in the vector space. Updates the entry if the ID already exists.",
+		Description: "Store a new entry by text. Vectorisation happens inside VecFS. Updates if ID exists.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"id": map[string]any{"type": "string"},
-				"text": map[string]any{"type": "string"},
-				"vector": map[string]any{},
+				"id":       map[string]any{"type": "string"},
+				"text":    map[string]any{"type": "string"},
 				"metadata": map[string]any{"type": "object"},
 			},
-			"required": []any{"id", "vector"},
+			"required": []any{"id", "text"},
 		},
 	},
 	{
@@ -111,12 +110,13 @@ func toFloat64(x interface{}) (float64, bool) {
 }
 
 // CallTool runs the named tool with the given arguments and returns MCP content.
-func CallTool(st *storage.Storage, name string, args map[string]interface{}) ([]map[string]interface{}, error) {
+// emb must be non-nil: search and memorize are text-only and use emb to embed query/text.
+func CallTool(st *storage.Storage, emb embed.Embedder, name string, args map[string]interface{}) ([]map[string]interface{}, error) {
 	switch name {
 	case "search":
-		return toolSearch(st, args)
+		return toolSearch(st, emb, args)
 	case "memorize":
-		return toolMemorize(st, args)
+		return toolMemorize(st, emb, args)
 	case "feedback":
 		return toolFeedback(st, args)
 	case "delete":
@@ -126,14 +126,17 @@ func CallTool(st *storage.Storage, name string, args map[string]interface{}) ([]
 	}
 }
 
-func toolSearch(st *storage.Storage, args map[string]interface{}) ([]map[string]interface{}, error) {
-	vecRaw, ok := args["vector"]
-	if !ok {
-		return nil, fmt.Errorf("missing vector")
+func toolSearch(st *storage.Storage, emb embed.Embedder, args map[string]interface{}) ([]map[string]interface{}, error) {
+	if emb == nil {
+		return nil, fmt.Errorf("search requires embedder")
 	}
-	vec, err := NormalizeVector(vecRaw)
+	q, ok := args["query"].(string)
+	if !ok || q == "" {
+		return nil, fmt.Errorf("missing query")
+	}
+	vec, err := emb.Embed(q)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("embed query: %w", err)
 	}
 	limit := 5
 	if l, ok := toFloat64(args["limit"]); ok && l > 0 {
@@ -158,18 +161,21 @@ func toolSearch(st *storage.Storage, args map[string]interface{}) ([]map[string]
 	return []map[string]interface{}{{"type": "text", "text": string(text)}}, nil
 }
 
-func toolMemorize(st *storage.Storage, args map[string]interface{}) ([]map[string]interface{}, error) {
+func toolMemorize(st *storage.Storage, emb embed.Embedder, args map[string]interface{}) ([]map[string]interface{}, error) {
+	if emb == nil {
+		return nil, fmt.Errorf("memorize requires embedder")
+	}
 	id, _ := args["id"].(string)
 	if id == "" {
 		return nil, fmt.Errorf("missing id")
 	}
-	vecRaw, ok := args["vector"]
-	if !ok {
-		return nil, fmt.Errorf("missing vector")
+	t, ok := args["text"].(string)
+	if !ok || t == "" {
+		return nil, fmt.Errorf("missing text")
 	}
-	vec, err := NormalizeVector(vecRaw)
+	vec, err := emb.Embed(t)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("embed text: %w", err)
 	}
 	meta := make(map[string]any)
 	if m, ok := args["metadata"].(map[string]interface{}); ok {
@@ -186,8 +192,7 @@ func toolMemorize(st *storage.Storage, args map[string]interface{}) ([]map[strin
 		Metadata: meta,
 		Score:    0,
 	}
-	_, err = st.Store(entry)
-	if err != nil {
+	if _, err := st.Store(entry); err != nil {
 		return nil, err
 	}
 	return []map[string]interface{}{{"type": "text", "text": "Stored entry: " + id}}, nil

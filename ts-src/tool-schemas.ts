@@ -1,24 +1,7 @@
 /**
  * MCP tool schema definitions for the VecFS server.
- *
- * Centralises all tool definitions so the vector schema is declared once
- * and reused across tools that accept vectors.
+ * Text-only API: search and memorize accept only text; vectorisation happens inside VecFS.
  */
-
-const vectorSchema = {
-  oneOf: [
-    {
-      type: "object",
-      description: "Sparse vector (key=dimension index, value=weight).",
-      additionalProperties: { type: "number" },
-    },
-    {
-      type: "array",
-      description: "Dense vector array.",
-      items: { type: "number" },
-    },
-  ],
-};
 
 /**
  * The complete list of tools exposed by the VecFS MCP server.
@@ -28,14 +11,13 @@ export const toolDefinitions = [
   {
     name: "search",
     description:
-      "Search memory by natural-language query. Prefer sending query (text); VecFS embeds it. Returns text-only results: id, metadata (including stored text), score, timestamp, similarity. No vectors in the response.",
+      "Semantic search: find entries with similar meaning to the query text. Vectorisation happens inside VecFS. Returns id, metadata, score, timestamp, similarity (no vectors in response).",
     inputSchema: {
       type: "object",
       properties: {
-        vector: vectorSchema,
         query: {
           type: "string",
-          description: "Natural-language search query. Recommended: let VecFS embed it; do not supply vector unless you computed it with the same model as the store.",
+          description: "Search by text (semantic).",
         },
         limit: {
           type: "number",
@@ -43,25 +25,24 @@ export const toolDefinitions = [
           default: 5,
         },
       },
-      required: [],
+      required: ["query"],
     },
   },
   {
     name: "memorize",
     description:
-      "Store a lesson, fact, or decision in memory. Prefer sending id and text; VecFS embeds the text. Updates the entry if the ID already exists.",
+      "Store a lesson, fact, or decision in memory by text. Vectorisation happens inside VecFS. Updates the entry if the ID already exists.",
     inputSchema: {
       type: "object",
       properties: {
         id: { type: "string" },
         text: {
           type: "string",
-          description: "Text to store. Recommended: send this and omit vector; VecFS handles embedding.",
+          description: "Text to store; VecFS embeds it.",
         },
-        vector: vectorSchema,
         metadata: { type: "object" },
       },
-      required: ["id"],
+      required: ["id", "text"],
     },
   },
   {

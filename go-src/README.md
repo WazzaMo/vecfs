@@ -9,7 +9,8 @@ Go ports of the VecFS programs, aligned with `ts-src` and `py-src` behaviour. Un
 - **internal/config** — Load `vecfs.yaml` and env overrides. Matches `ts-src/config.ts` and `py-src/vecfs_embed/config.py`.
 - **internal/mcp** — MCP tools (search, memorize, feedback, delete) and JSON-RPC over stdio. Matches `ts-src` MCP server behaviour.
 - **internal/embed** — Mock text-to-vector for testing (no real embedding model).
-- **cmd/vecfs** — Main VecFS CLI (proof-of-concept: `container demo` to start/stop a container via containerd).
+- **internal/container** — Start/stop containers via docker or podman CLI (used by vecfs container start/stop).
+- **cmd/vecfs** — Main VecFS CLI: `container start` / `container stop` to run the embedding model via docker or podman (configurable).
 - **cmd/vecfs-mcp-go** — MCP server binary (stdio).
 - **cmd/vecfs-embed-go** — Embed CLI using mock embedder; use Python `vecfs_embed` for real models.
 
@@ -29,19 +30,20 @@ go build -o vecfs-mcp-go ./cmd/vecfs-mcp-go/
 go build -o vecfs-embed-go ./cmd/vecfs-embed-go/
 ```
 
-### vecfs container demo
+### vecfs container start / stop
 
-Proves start/stop of containers via containerd (no Docker CLI). Requires containerd running and access to its socket (default `/run/containerd/containerd.sock`; override with `CONTAINERD_ADDRESS`):
+Start and stop the embedding model container using docker or podman (set `VECFS_CONTAINER_RUNTIME` or config `container.runtime` to `docker` or `podman`). Set `VECFS_EMBED_IMAGE` or config `container.image` to the image to run (e.g. a sentence-transformers server). Default container name is `vecfs-embed`; default host port is 8080.
 
 ```bash
-./vecfs container demo
+./vecfs container start   # start container (requires VECFS_EMBED_IMAGE or config)
+./vecfs container stop    # stop and remove (user cleanup)
 ```
 
-If containerd is not available, the command exits with a message suggesting the Python embedder (vecfs_embed) for embedding without containers.
+Use `container stop` when the session ends if you started the container manually, or to clean up after an interrupted run.
 
 ## Configuration
 
-Same as TS/Py: `vecfs.yaml` (or `.vecfs.yaml`), `VECFS_CONFIG`, `--config`, env overrides `VECFS_FILE`, `PORT`, `VECFS_EMBED_*`.
+Same as TS/Py: `vecfs.yaml` (or `.vecfs.yaml`), `VECFS_CONFIG`, `--config`, env overrides `VECFS_FILE`, `PORT`, `VECFS_EMBED_*`. For containers: `VECFS_CONTAINER_RUNTIME` (docker|podman), `VECFS_EMBED_IMAGE`, `VECFS_CONTAINER_NAME`, `VECFS_CONTAINER_PORT`.
 
 ## Test parity
 

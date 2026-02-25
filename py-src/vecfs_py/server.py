@@ -12,7 +12,6 @@ from typing import Any, Callable, Awaitable
 
 from mcp.server.fastmcp import FastMCP
 
-from .sparse import normalize_vector_input
 from .storage import VecFSStorage
 
 # Optional embedder: async (text, mode) -> dict[int, float] (sparse vector)
@@ -23,26 +22,16 @@ def create_app(
     storage: VecFSStorage,
     embedder: EmbedderFn | None = None,
 ) -> FastMCP:
-    """Create FastMCP app with VecFS tools bound to the given storage and optional embedder."""
+    """Create FastMCP app with VecFS tools bound to the given storage and embedder (required for text-only API)."""
+    if embedder is None:
+        raise ValueError("embedder is required (text-only API)")
+
     mcp = FastMCP(name="vecfs-server")
 
     @mcp.tool()
-    async def search(
-        vector: dict[str, float] | list[float] | str | None = None,
-        query: str | None = None,
-        limit: int = 5,
-    ) -> str:
-        """Search memory by natural-language query. Prefer sending query (text); VecFS embeds it. Returns text-only results: id, metadata (including stored text), score, timestamp, similarity. No vectors in the response."""
-        if vector is not None:
-            if isinstance(vector, str):
-                vector = json.loads(vector)
-            sparse = normalize_vector_input(vector)
-        elif query is not None and embedder is not None:
-            sparse = await embedder(query, "query")
-        else:
-            raise ValueError(
-                "search requires either 'vector' or 'query' (query requires embedder to be enabled)."
-            )
+    async def search(query: str, limit: int = 5) -> str:
+        """Semantic search: find entries with similar meaning to the query text. Vectorisation happens inside VecFS. Returns id, metadata, score, timestamp, similarity (no vectors in response)."""
+        sparse = await embedder(query, "query")
         results = await storage.search(sparse, limit=limit)
         # Omit vector from response (text-only results)
         out = [
@@ -60,24 +49,13 @@ def create_app(
     @mcp.tool()
     async def memorize(
         id: str,
-        text: str | None = None,
-        vector: dict[str, float] | list[float] | str | None = None,
+        text: str,
         metadata: dict[str, Any] | None = None,
     ) -> str:
-        """Store a lesson, fact, or decision in memory. Prefer sending id and text; VecFS embeds the text. Updates the entry if the ID already exists."""
-        if vector is not None:
-            if isinstance(vector, str):
-                vector = json.loads(vector)
-            sparse = normalize_vector_input(vector)
-        elif text is not None and embedder is not None:
-            sparse = await embedder(text, "document")
-        else:
-            raise ValueError(
-                "memorize requires either 'vector' or 'text' (text requires embedder to be enabled)."
-            )
+        """Store a lesson, fact, or decision in memory by text. Vectorisation happens inside VecFS. Updates the entry if the ID already exists."""
+        sparse = await embedder(text, "document")
         meta = dict(metadata) if metadata else {}
-        if text is not None:
-            meta["text"] = text
+        meta["text"] = text
         await storage.store(id=id, vector=sparse, metadata=meta, score=0.0)
         return f"Stored entry: {id}"
 

@@ -4,51 +4,30 @@ Complete parameter reference for the VecFS MCP server tools.
 
 # search
 
-Search the vector space for entries similar to a query vector.
+Semantic search: find entries with similar meaning to the query text. Vectorisation happens inside VecFS (text-only API).
 
 ## Parameters
 
-| Name   | Type             | Required | Description                          |
-|--------|------------------|----------|--------------------------------------|
-| vector | object or array  | Yes      | Sparse object or dense array         |
-| limit  | number           | No       | Maximum results to return (default 5)|
-
-## Vector Format
-
-The `vector` parameter accepts either format:
-
-### Sparse Object
-
-Keys are dimension indices (as strings), values are weights.
-
-```json
-{"3": 0.42, "17": -0.31, "128": 0.15}
-```
-
-### Dense Array
-
-A flat array of numbers. The server converts it to sparse internally.
-
-```json
-[0.0, 0.0, 0.42, 0.0, ...]
-```
+| Name   | Type   | Required | Description                          |
+|--------|--------|----------|--------------------------------------|
+| query  | string | Yes      | Search by text (semantic)            |
+| limit  | number | No       | Maximum results to return (default 5)|
 
 ## Response
 
-A JSON array of matching entries, sorted by cosine similarity (highest first). Each entry includes `id`, `vector`, `metadata`, `score`, and `similarity`.
+A JSON array of matching entries, sorted by similarity (highest first). Each entry includes `id`, `metadata`, `score`, `timestamp`, and `similarity`. Vectors are not returned.
 
 # memorize
 
-Store a new entry in the vector space. If an entry with the same `id` already exists, it is replaced (upsert semantics).
+Store a new entry by text. Vectorisation happens inside VecFS (text-only API). If an entry with the same `id` already exists, it is replaced (upsert semantics).
 
 ## Parameters
 
-| Name     | Type            | Required | Description                           |
-|----------|-----------------|----------|---------------------------------------|
-| id       | string          | Yes      | Unique identifier for the entry       |
-| vector   | object or array | Yes      | Sparse object or dense array          |
-| text     | string          | No       | Human-readable text of the memory     |
-| metadata | object          | No       | Arbitrary key-value metadata tags     |
+| Name     | Type   | Required | Description                           |
+|----------|--------|----------|---------------------------------------|
+| id       | string | Yes      | Unique identifier for the entry       |
+| text     | string | Yes      | Text to store; VecFS embeds it        |
+| metadata | object | No       | Arbitrary key-value metadata tags     |
 
 ## Response
 
