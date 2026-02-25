@@ -8,15 +8,15 @@ Outline the goal of offering full VecFS capability (embedder and MCP server) in 
 
 ## Go
 
-Go already provides a single tech-stack experience: both the embedder and the MCP server are implemented in Go (vecfs-embed-go, vecfs-mcp-go), with shared storage and sparse-vector logic. The main `vecfs` CLI can orchestrate these components.
+Go already provides a single tech-stack experience: both the embedder and the MCP server are implemented in Go (vecfs-embed-go, vecfs-mcp-go), with shared storage and sparse-vector logic. The main `vecfs` CLI can orchestrate these components. Stack-specific CLI: **vecfs-go** (see `docs/notes/2026-02-25-typescript-single-stack-embedder.md`).
 
 ## Python
 
-Python currently has vecfs-embed only. It provides model-agnostic text-to-sparse-vector conversion (Pydantic AI, Sentence Transformers, cloud providers). There is no Python MCP server; users who want MCP with a Python embedder must run the TypeScript or Go MCP server and call the Python embedder separately (e.g. via CLI or subprocess).
+Python now provides a single-stack experience. **vecfs-py** (CLI) runs the Python MCP server (`vecfs_py`) and optionally uses **vecfs-embed** for in-process text-to-vector (search with `query`, memorize with `text`). Implemented 2026-02-25: `py-src/vecfs_py/` (storage, sparse math, FastMCP server with search, memorize, feedback, delete; embedder adapter that calls vecfs_embed when available). Same JSONL file format and tool semantics as TS/Go. Install: same package as vecfs-embed adds `mcp[cli]` and script `vecfs-py`; run `vecfs-py mcp` (stdio) or `vecfs-py mcp --http` (streamable HTTP).
 
 ## TypeScript
 
-TypeScript has the MCP server (ts-src: tool-handlers, storage, sparse-vector, HTTP/stdio transport). The server accepts pre-computed vectors for search and memorize; it does not perform embedding. There is no TypeScript embedder, so a "TypeScript-only" user must use an external embedder (e.g. vecfs-embed, vecfs-embed-go, or an API).
+TypeScript has the MCP server (ts-src) and an **in-process embedder** (fastembed-js) so the stack is single-stack: one Node process for MCP + embedding. Stack-specific CLI: **vecfs-ts** / **npx vecfs** (see `docs/notes/2026-02-25-typescript-single-stack-embedder.md`).
 
 # Target: Python MCP Server
 
@@ -71,13 +71,15 @@ Transformers.js is a viable alternative for a TypeScript embedder when broader m
 | Stack     | Embedder              | MCP server              | Single-stack? |
 |-----------|------------------------|--------------------------|---------------|
 | Go        | vecfs-embed-go        | vecfs-mcp-go             | Yes           |
-| Python    | vecfs-embed           | Missing                  | No            |
-| TypeScript| Missing               | ts-src (vecfs-mcp)       | No            |
+| Python    | vecfs-embed           | vecfs_py (vecfs-py)      | Yes           |
+| TypeScript| ts-src (fastembed-js) | ts-src (vecfs-mcp)       | Yes           |
 
-To achieve single tech-stack versions:
+All three stacks now offer full VecFS capability (embedder + MCP) in a single language. Stack-specific CLIs: **vecfs-go**, **vecfs-py**, **vecfs-ts** / **npx vecfs** (see `docs/notes/2026-02-25-typescript-single-stack-embedder.md`).
 
-- **Python:** Add a Python MCP server using the official [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) and its FastMCP API; implement VecFS tools (search, memorize, feedback) and optionally integrate with vecfs-embed for text-to-vector in the same process or via subprocess.
+Implementation details:
 
-- **TypeScript:** Add a TypeScript embedder (e.g. vecfs-embed-ts) using [fastembed-js](https://github.com/Anush008/fastembed-js) as the primary in-process embedding backend, with [Transformers.js](https://huggingface.co/docs/transformers.js/index) as an alternative for broader models or browser use; produce sparse vectors compatible with the existing ts-src storage and MCP tools.
+- **Python:** Implemented 2026-02-25: Python MCP server using the official [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) FastMCP API; VecFS tools (search, memorize, feedback, delete); optional in-process integration with vecfs-embed for text/query embedding; **vecfs-py** CLI (`vecfs-py mcp`, `vecfs-py version`).
 
-Implementation plans for each addition should be recorded in dated notes and aligned with `docs/goals.md` and `docs/requirements.md`.
+- **TypeScript:** Implemented 2026-02-25: In-process embedder using [fastembed-js](https://github.com/Anush008/fastembed-js); search accepts `query`, memorize accepts `text`; see `docs/notes/2026-02-25-typescript-single-stack-embedder.md`.
+
+Implementation plans and progress are recorded in dated notes and aligned with `docs/goals.md` and `docs/requirements.md`.
