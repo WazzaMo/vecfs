@@ -1,16 +1,21 @@
 baseURL = "https://wazzamo.github.io/vecfs/"
 languageCode = "en-us"
 title = "VecFS"
-theme = "github.com/halogenica/beautifulhugo"
+theme = "github.com/alex-shpak/hugo-book"
 publishDir = "public"
 
 [module]
   [[module.imports]]
-    path = "github.com/halogenica/beautifulhugo"
+    path = "github.com/alex-shpak/hugo-book"
     disable = false
 
 [params]
-  showPageDates = false
+  BookTheme = "auto"
+  BookToC = true
+  BookLogo = "logo.svg"
+  BookSection = "docs"
+  BookSearch = true
+  BookComments = false
   [params.author]
     name = "VecFS"
     website = "https://github.com/WazzaMo/vecfs"

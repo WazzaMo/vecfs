@@ -70,6 +70,7 @@ Add VecFS to your agent's MCP configuration (Claude Desktop, Cursor, etc.):
 
 ## Documentation
 
+- [Goals](/vecfs/docs/goals/) — Objectives and design goals for VecFS.
 - [Requirements](/vecfs/docs/requirements/) — Technical requirements for the MCP server and storage layer.
 - [Releases](/vecfs/docs/releases/) — Release notes and version history.
 

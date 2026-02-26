@@ -1,6 +1,6 @@
 # VecFS GitHub Pages (Hugo)
 
-This directory contains the [Hugo](https://gohugo.io/) source for the VecFS project site, built for GitHub Pages. The site uses the [Beautiful Hugo](https://github.com/halogenica/beautifulhugo) theme (Hugo module).
+This directory contains the [Hugo](https://gohugo.io/) source for the VecFS project site, built for GitHub Pages. The site uses the [Hugo Book](https://github.com/alex-shpak/hugo-book) theme (Hugo module).
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ From this directory (`pages/`):
 hugo --minify
 ```
 
-The site uses Beautiful Hugo as a Hugo module; the first build will download the theme.
+The site uses Hugo Book as a Hugo module; the first build will download the theme.
 
 Output is written to `public/`. To preview locally:
 
@@ -41,11 +41,12 @@ A GitHub Actions workflow (`.github/workflows/pages.yml`) builds and publishes t
 
 ## Assets
 
-- **Logo** — `static/logo.svg` is a copy of `vecfs-plugin/assets/logo.svg`, used in the header and as favicon. Update the copy here if the plugin logo changes.
+- **Logo** — `static/logo.svg` is a copy of `vecfs-plugin/assets/logo.svg`. Set `BookLogo = 'logo.svg'` in `hugo.toml` if you want it in the sidebar; the theme can also use it as favicon via `BookFavicon`. Update the copy here if the plugin logo changes.
 
 ## Content
 
 - **Home** — `content/_index.md` (from README.md)
+- **Goals** — `content/docs/goals/_index.md` (from `../docs/goals.md`)
 - **Requirements** — `content/docs/requirements/_index.md` (from docs/requirements.md)
 - **Releases** — `content/docs/releases/_index.md` plus one page per release note; links to `docs/release-notes/` in the repo are listed for reference.
 
