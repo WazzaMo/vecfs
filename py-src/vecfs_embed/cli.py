@@ -78,6 +78,11 @@ def _parse_args() -> argparse.Namespace:
         default=embed.threshold,
         help=f"Sparsification threshold (default from config or {DEFAULT_THRESHOLD}, env: VECFS_EMBED_THRESHOLD).",
     )
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="Print version and exit.",
+    )
 
     return parser.parse_args()
 
@@ -132,6 +137,10 @@ async def _run(args: argparse.Namespace) -> None:
 
 def main() -> None:
     args = _parse_args()
+    if getattr(args, "version", False):
+        from .version import get_version
+        print(f"vecfs-embed {get_version()}")
+        return
     asyncio.run(_run(args))
 
 

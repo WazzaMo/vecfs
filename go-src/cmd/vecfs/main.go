@@ -7,6 +7,9 @@ import (
 	"os"
 )
 
+// version is set at build time via -ldflags "-X main.version=..." from VERSION.txt.
+var version = "dev"
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -14,7 +17,7 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "version":
-		fmt.Fprintf(os.Stderr, "vecfs-go (VecFS Go CLI)\n")
+		fmt.Fprintf(os.Stderr, "vecfs-go %s\n", version)
 		os.Exit(0)
 	case "container":
 		if len(os.Args) < 3 {

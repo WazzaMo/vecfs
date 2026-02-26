@@ -16,7 +16,9 @@ import argparse
 import asyncio
 import sys
 
-__version__ = "0.1.0"
+from vecfs_embed.version import get_version
+
+__version__ = get_version()
 
 
 def _parse_args() -> argparse.Namespace:

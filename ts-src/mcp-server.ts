@@ -12,6 +12,7 @@ import { loadConfig } from "./config.js";
 import { VecFSStorage } from "./storage.js";
 import { toolDefinitions } from "./tool-schemas.js";
 import { createToolHandlers } from "./tool-handlers.js";
+import { VERSION } from "./version.generated.js";
 
 /**
  * Main entry point.
@@ -26,7 +27,7 @@ async function main() {
   const handlers = createToolHandlers(storage, embedderGetter);
 
   const server = new Server(
-    { name: "vecfs-server", version: "0.1.0" },
+    { name: "vecfs-server", version: VERSION },
     { capabilities: { tools: {} } },
   );
 

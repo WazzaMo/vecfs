@@ -13,6 +13,9 @@ import (
 	"github.com/WazzaMo/vecfs/internal/storage"
 )
 
+// version is set at build time via -ldflags "-X main.version=..." from VERSION.txt.
+var version = "dev"
+
 func main() {
 	cfg, err := config.LoadConfig(os.Args)
 	if err != nil {
@@ -26,7 +29,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("embedder required (text-only API): %v", err)
 	}
-	fmt.Fprintf(os.Stderr, "VecFS MCP Server running on stdio (embedder: %s)\n", emb.Provider())
+	fmt.Fprintf(os.Stderr, "VecFS MCP Server %s running on stdio (embedder: %s)\n", version, emb.Provider())
 	if err := mcp.RunStdio(st, emb); err != nil {
 		log.Fatalf("stdio: %v", err)
 	}

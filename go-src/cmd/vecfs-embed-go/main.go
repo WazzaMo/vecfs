@@ -14,6 +14,9 @@ import (
 	"github.com/WazzaMo/vecfs/internal/embed"
 )
 
+// version is set at build time via -ldflags "-X main.version=..." from VERSION.txt.
+var version = "dev"
+
 func main() {
 	configPath := flag.String("config", "", "Path to vecfs.yaml")
 	mode := flag.String("mode", "query", "query or document")
@@ -22,7 +25,13 @@ func main() {
 	model := flag.String("model", "", "Embedding model")
 	dims := flag.Int("dims", 0, "Dimensions (optional)")
 	provider := flag.String("provider", "", "Embedder provider: mock, huggingface, or local")
+	showVersion := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Fprintf(os.Stderr, "vecfs-embed-go %s\n", version)
+		os.Exit(0)
+	}
 
 	cfg, err := config.LoadConfig(os.Args)
 	if err != nil {

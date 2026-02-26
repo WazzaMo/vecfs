@@ -1,6 +1,6 @@
 {
   "name": "vecfs-ts",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "VecFS MCP server: vector storage and search for AI agents via the Model Context Protocol.",
   "main": "dist/mcp-server.js",
   "bin": {
@@ -14,8 +14,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "check": "tsc --noEmit",
-    "build": "rm -rf dist && tsc --noEmit && node esbuild.config.mjs",
+    "check": "node scripts/inject-version.mjs && tsc --noEmit",
+    "build": "node scripts/inject-version.mjs && rm -rf dist && tsc --noEmit && node esbuild.config.mjs",
     "start": "node dist/mcp-server.js",
     "test": "vitest run",
     "test:integration": "vitest run --testTimeout 30000 integration.test.ts",
