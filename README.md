@@ -2,6 +2,10 @@
 
 VecFS (Vector File System) is a lightweight, local-first vector storage specification and implementation designed for AI agent long-term memory.
 
+# Version
+
+The project version is defined in **VERSION.txt** at the repo root. All builds (Python, TypeScript, Go) use this file so there is a single place to update the version. Python reads it via `pyproject.toml` (dynamic version) and package metadata; TypeScript injects it at build time via `scripts/inject-version.mjs`; Go injects it at build time via `-ldflags` (use `./scripts/build-go.sh` from repo root).
+
 # Copyright
 
 (c) Copyright 2026 Warwick Molloy.
