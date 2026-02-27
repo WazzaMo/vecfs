@@ -3566,7 +3566,6 @@ wheels = [
 
 [[package]]
 name = "vecfs-embed"
-version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
@@ -3615,7 +3614,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
-provides-extras = ["openai", "google", "cohere", "voyageai", "all", "dev"]
+provides-extras = ["all", "cohere", "dev", "google", "openai", "voyageai"]
 
 [[package]]
 name = "voyageai"

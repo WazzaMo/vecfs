@@ -64,7 +64,9 @@ markers = ["asyncio: mark test as an async test"]
 packages = ["vecfs_embed", "vecfs_py"]
 
 [tool.hatch.version]
+source = "regex"
 path = "../VERSION.txt"
+pattern = "^(?P<version>.+)$"
 
 [build-system]
 requires = ["hatchling"]

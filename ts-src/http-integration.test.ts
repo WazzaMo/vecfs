@@ -195,7 +195,6 @@ describe("MCP HTTP Integration Test", () => {
       arguments: {
         id: "http-test-1",
         text: "HTTP integration test",
-        vector: { "0": 1 },
         metadata: { transport: "http" },
       },
     });
@@ -204,7 +203,7 @@ describe("MCP HTTP Integration Test", () => {
     // 5. Perform Search Operation
     const searchResult = await sendRequest("tools/call", {
       name: "search",
-      arguments: { vector: { "0": 1 }, limit: 1 },
+      arguments: { query: "HTTP integration test", limit: 1 },
     });
 
     const content = JSON.parse(searchResult.content[0].text);

@@ -185,13 +185,12 @@ describe("MCP Integration Test", () => {
   // Basic memorize / search
   // -----------------------------------------------------------------------
 
-  it("should memorize and then search for a vector", async () => {
+  it("should memorize and then search by text", async () => {
     const memResult = await sendRequest("tools/call", {
       name: "memorize",
       arguments: {
         id: "integration-1",
         text: "integration test entry",
-        vector: { "0": 1, "1": 0.5 },
         metadata: { source: "test" },
       },
     });
@@ -200,7 +199,7 @@ describe("MCP Integration Test", () => {
     const searchResult = await sendRequest("tools/call", {
       name: "search",
       arguments: {
-        vector: { "0": 1, "1": 0.5 },
+        query: "integration test entry",
         limit: 1,
       },
     });
@@ -208,7 +207,7 @@ describe("MCP Integration Test", () => {
     const content = JSON.parse(searchResult.content[0].text);
     expect(content).toHaveLength(1);
     expect(content[0].id).toBe("integration-1");
-    expect(content[0].similarity).toBeCloseTo(1);
+    expect(content[0].similarity).toBeGreaterThan(0.7);
   });
 
   // -----------------------------------------------------------------------
@@ -221,7 +220,6 @@ describe("MCP Integration Test", () => {
       arguments: {
         id: "topic-a",
         text: "This is topic A",
-        vector: { "10": 1, "11": 1 },
         metadata: { tag: "A" },
       },
     });
@@ -231,7 +229,6 @@ describe("MCP Integration Test", () => {
       arguments: {
         id: "topic-b",
         text: "This is topic B",
-        vector: { "20": 1, "21": 1 },
         metadata: { tag: "B" },
       },
     });
@@ -239,7 +236,7 @@ describe("MCP Integration Test", () => {
     const searchResult = await sendRequest("tools/call", {
       name: "search",
       arguments: {
-        vector: { "10": 1, "11": 0.5 },
+        query: "topic A",
         limit: 5,
       },
     });
@@ -250,7 +247,7 @@ describe("MCP Integration Test", () => {
 
     const topicB = content.find((r: any) => r.id === "topic-b");
     if (topicB) {
-      expect(topicB.similarity).toBe(0);
+      expect(topicB.similarity).toBeLessThanOrEqual(content[0].similarity);
     }
   });
 
@@ -265,14 +262,13 @@ describe("MCP Integration Test", () => {
       arguments: {
         id: entryId,
         text: "Feedback test entry",
-        vector: { "30": 1 },
         metadata: { tag: "feedback" },
       },
     });
 
     let searchResult = await sendRequest("tools/call", {
       name: "search",
-      arguments: { vector: { "30": 1 }, limit: 1 },
+      arguments: { query: "Feedback test entry", limit: 1 },
     });
     let content = JSON.parse(searchResult.content[0].text);
     const initialScore = content[0].score;
@@ -284,7 +280,7 @@ describe("MCP Integration Test", () => {
 
     searchResult = await sendRequest("tools/call", {
       name: "search",
-      arguments: { vector: { "30": 1 }, limit: 1 },
+      arguments: { query: "Feedback test entry", limit: 1 },
     });
     content = JSON.parse(searchResult.content[0].text);
     expect(content[0].score).toBe(initialScore + 5);
@@ -309,14 +305,13 @@ describe("MCP Integration Test", () => {
       arguments: {
         id: entryId,
         text: "Entry to delete",
-        vector: { "50": 1 },
         metadata: {},
       },
     });
 
     let searchResult = await sendRequest("tools/call", {
       name: "search",
-      arguments: { vector: { "50": 1 }, limit: 1 },
+      arguments: { query: "Entry to delete", limit: 1 },
     });
     let content = JSON.parse(searchResult.content[0].text);
     expect(content[0].id).toBe(entryId);
@@ -329,7 +324,7 @@ describe("MCP Integration Test", () => {
 
     searchResult = await sendRequest("tools/call", {
       name: "search",
-      arguments: { vector: { "50": 1 }, limit: 10 },
+      arguments: { query: "Entry to delete", limit: 10 },
     });
     content = JSON.parse(searchResult.content[0].text);
     expect(content.find((r: any) => r.id === entryId)).toBeUndefined();
@@ -354,7 +349,6 @@ describe("MCP Integration Test", () => {
       arguments: {
         id: persistId,
         text: "Persistence test",
-        vector: { "40": 1 },
         metadata: {},
       },
     });
@@ -365,7 +359,7 @@ describe("MCP Integration Test", () => {
 
     const searchResult = await sendRequest("tools/call", {
       name: "search",
-      arguments: { vector: { "40": 1 }, limit: 1 },
+      arguments: { query: "Persistence test", limit: 1 },
     });
     const content = JSON.parse(searchResult.content[0].text);
     expect(content).toHaveLength(1);
@@ -376,12 +370,12 @@ describe("MCP Integration Test", () => {
   // Real documentation indexing
   // -----------------------------------------------------------------------
 
-  it("should index and retrieve real documentation", async () => {
+  it("should index and retrieve real documentation", { timeout: 10000 }, async () => {
     const docsDir = path.join(process.cwd(), "docs");
     const files = await fs.readdir(docsDir);
     const mdFiles = files.filter((f) => f.endsWith(".md"));
 
-    for (const file of mdFiles) {
+      for (const file of mdFiles) {
       const fileContent = await fs.readFile(
         path.join(docsDir, file),
         "utf-8",
@@ -400,18 +394,15 @@ describe("MCP Integration Test", () => {
           arguments: {
             id: `${file}-chunk-${i}`,
             text: chunk,
-            vector,
             metadata: { source: file },
           },
         });
       }
     }
 
-    const queryVector = mockEmbed("sparse vector storage efficiency");
-
     const searchResult = await sendRequest("tools/call", {
       name: "search",
-      arguments: { vector: queryVector, limit: 3 },
+      arguments: { query: "sparse vector storage efficiency", limit: 3 },
     });
 
     const content = JSON.parse(searchResult.content[0].text);
@@ -431,92 +422,60 @@ describe("MCP Integration Test", () => {
   // Dense vector support
   // -----------------------------------------------------------------------
 
-  it("should accept dense vector arrays", async () => {
+  it("should still behave predictably for repeated dense-like text", async () => {
     await sendRequest("tools/call", {
       name: "memorize",
       arguments: {
         id: "dense-test-unique",
-        text: "Dense vector test",
-        vector: [0, 0, 0, 0, 1],
+        text: "Dense vector test dimensions 0 0 0 0 1",
         metadata: { type: "dense" },
       },
     });
 
     const searchResult = await sendRequest("tools/call", {
       name: "search",
-      arguments: { vector: [0, 0, 0, 0, 1], limit: 1 },
+      arguments: { query: "Dense vector test dimensions 0 0 0 0 1", limit: 1 },
     });
 
     const content = JSON.parse(searchResult.content[0].text);
     expect(content).toHaveLength(1);
     expect(content[0].id).toBe("dense-test-unique");
-    expect(content[0].similarity).toBeCloseTo(1);
+    expect(content[0].similarity).toBeGreaterThan(0.7);
   });
 
-  it("should handle random dense arrays", async () => {
-    const length = 50;
-    const denseVector: number[] = [];
-    for (let i = 0; i < length; i++) {
-      denseVector.push(Math.random());
-    }
-
-    const id = "random-dense-1";
+  it("should handle varied text content", async () => {
+    const id = "random-text-1";
     await sendRequest("tools/call", {
       name: "memorize",
       arguments: {
         id,
-        text: "Random dense vector test",
-        vector: denseVector,
-        metadata: { type: "random-dense" },
+        text: "Random text embedding test with varied tokens",
+        metadata: { type: "random-text" },
       },
     });
 
     const searchResult = await sendRequest("tools/call", {
       name: "search",
-      arguments: { vector: denseVector, limit: 1 },
+      arguments: { query: "Random text embedding test with varied tokens", limit: 1 },
     });
 
     const content = JSON.parse(searchResult.content[0].text);
     expect(content).toHaveLength(1);
     expect(content[0].id).toBe(id);
-    expect(content[0].similarity).toBeCloseTo(1);
+    expect(content[0].similarity).toBeGreaterThan(0.7);
   });
 
   // -----------------------------------------------------------------------
   // Vector as JSON string (MCP client compatibility)
   // -----------------------------------------------------------------------
 
-  it("should accept vector as JSON string in search and memorize", async () => {
-    const id = "string-vector-test";
-    const uniqueVector = { "99994": 1, "99995": 0.5 };
-    await sendRequest("tools/call", {
-      name: "memorize",
-      arguments: {
-        id,
-        text: "Stored with string vector",
-        vector: JSON.stringify(uniqueVector),
-        metadata: {},
-      },
-    });
-
-    const searchResult = await sendRequest("tools/call", {
-      name: "search",
-      arguments: {
-        vector: JSON.stringify(uniqueVector),
-        limit: 1,
-      },
-    });
-
-    const content = JSON.parse(searchResult.content[0].text);
-    expect(content).toHaveLength(1);
-    expect(content[0].id).toBe(id);
-  });
+  // Vector-as-JSON-string behaviour is no longer part of the text-only API.
 
   // -----------------------------------------------------------------------
   // Stress test
   // -----------------------------------------------------------------------
 
-  it("should handle larger datasets (stress test)", async () => {
+  it("should handle larger datasets (stress test)", { timeout: 10000 }, async () => {
     const entryCount = 100;
     for (let i = 0; i < entryCount; i++) {
       await sendRequest("tools/call", {
@@ -524,7 +483,6 @@ describe("MCP Integration Test", () => {
         arguments: {
           id: `stress-${i}`,
           text: `Stress test entry ${i}`,
-          vector: { [i % 100]: 1 },
           metadata: { index: i },
         },
       });
@@ -539,7 +497,7 @@ describe("MCP Integration Test", () => {
 
     const searchResult = await sendRequest("tools/call", {
       name: "search",
-      arguments: { vector: { "0": 1 }, limit: 5 },
+      arguments: { query: "Stress test entry", limit: 5 },
     });
     const content = JSON.parse(searchResult.content[0].text);
     expect(content.length).toBeGreaterThan(0);
@@ -551,7 +509,7 @@ describe("MCP Integration Test", () => {
 
   it(
     "should use storage file from vecfs.yaml when no env set",
-    { timeout: 15000 },
+    { timeout: 10000 },
     async () => {
     const configDir = path.join(
       tmpdir(),
@@ -586,7 +544,7 @@ describe("MCP Integration Test", () => {
         const timer = setTimeout(() => {
           proc.stdout?.off("data", onData);
           reject(new Error("Config server request timeout"));
-        }, 5000);
+        }, 10000);
         const onData = (data: Buffer) => {
           const lines = data.toString().split("\n");
           for (const line of lines) {
@@ -620,7 +578,6 @@ describe("MCP Integration Test", () => {
     }
 
     const uniqueId = "config-file-test-" + Date.now();
-    const testVector = { "77": 1, "78": 0.5 };
 
     let configServer = startConfigServer();
     await waitReady(configServer);
@@ -629,7 +586,6 @@ describe("MCP Integration Test", () => {
       arguments: {
         id: uniqueId,
         text: "Stored via config file",
-        vector: testVector,
         metadata: {},
       },
     });
@@ -639,7 +595,7 @@ describe("MCP Integration Test", () => {
     await waitReady(configServer);
     const searchResult = await send(configServer, "tools/call", {
       name: "search",
-      arguments: { vector: testVector, limit: 1 },
+      arguments: { query: "Stored via config file", limit: 1 },
     });
     configServer.kill();
 
@@ -654,7 +610,7 @@ describe("MCP Integration Test", () => {
 
   it(
     "should let VECFS_FILE override storage file from vecfs.yaml",
-    { timeout: 15000 },
+    { timeout: 10000 },
     async () => {
     const configDir = path.join(
       tmpdir(),
@@ -681,7 +637,7 @@ describe("MCP Integration Test", () => {
         const timer = setTimeout(() => {
           configServer.stdout?.off("data", onData);
           reject(new Error("Config server request timeout"));
-        }, 5000);
+        }, 10000);
         const onData = (data: Buffer) => {
           const lines = data.toString().split("\n");
           for (const line of lines) {
@@ -722,7 +678,6 @@ describe("MCP Integration Test", () => {
       arguments: {
         id: uniqueId,
         text: "Stored via env override",
-        vector: { "1": 1 },
         metadata: {},
       },
     });
