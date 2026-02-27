@@ -21,3 +21,5 @@ go-src/vecfs
 local_cache/
 
 *.tar.gz
+
+build/
