@@ -7,7 +7,12 @@ import { getConfigPath, loadConfig } from "./config.js";
 describe("config", () => {
   const originalCwd = process.cwd();
   let tmpDir: string;
-  let savedEnv: { VECFS_FILE?: string; PORT?: string; VECFS_CONFIG?: string };
+  let savedEnv: {
+    VECFS_FILE?: string;
+    PORT?: string;
+    VECFS_CONFIG?: string;
+    VECFS_EMBEDDER?: string;
+  };
 
   beforeEach(async () => {
     tmpDir = path.join(
@@ -19,10 +24,12 @@ describe("config", () => {
       VECFS_FILE: process.env.VECFS_FILE,
       PORT: process.env.PORT,
       VECFS_CONFIG: process.env.VECFS_CONFIG,
+      VECFS_EMBEDDER: process.env.VECFS_EMBEDDER,
     };
     delete process.env.VECFS_FILE;
     delete process.env.PORT;
     delete process.env.VECFS_CONFIG;
+    delete process.env.VECFS_EMBEDDER;
   });
 
   afterEach(async () => {
@@ -30,6 +37,7 @@ describe("config", () => {
     process.env.VECFS_FILE = savedEnv.VECFS_FILE;
     process.env.PORT = savedEnv.PORT;
     process.env.VECFS_CONFIG = savedEnv.VECFS_CONFIG;
+    process.env.VECFS_EMBEDDER = savedEnv.VECFS_EMBEDDER;
     try {
       await fs.rm(tmpDir, { recursive: true, force: true });
     } catch {}
@@ -145,6 +153,40 @@ describe("config", () => {
       );
       const config = await loadConfig();
       expect(config.mcp.port).toBe(7000);
+    });
+
+    it("uses embedder from config file", async () => {
+      process.chdir(tmpDir);
+      await fs.writeFile(
+        path.join(tmpDir, "vecfs.yaml"),
+        [
+          "storage:",
+          "  file: data.jsonl",
+          "embedder:",
+          "  provider: transformers",
+          "  model: Xenova/all-MiniLM-L6-v2",
+        ].join("\n"),
+      );
+      const config = await loadConfig();
+      expect(config.embedder?.provider).toBe("transformers");
+      expect(config.embedder?.model).toBe("Xenova/all-MiniLM-L6-v2");
+    });
+
+    it("lets VECFS_EMBEDDER override config embedder", async () => {
+      process.chdir(tmpDir);
+      await fs.writeFile(
+        path.join(tmpDir, "vecfs.yaml"),
+        "embedder:\n  provider: fastembed\n",
+      );
+      process.env.VECFS_EMBEDDER = "onnx";
+      const config = await loadConfig();
+      expect(config.embedder?.provider).toBe("onnx");
+    });
+
+    it("defaults embedder to fastembed when not in config", async () => {
+      process.chdir(tmpDir);
+      const config = await loadConfig();
+      expect(config.embedder?.provider).toBe("fastembed");
     });
   });
 });

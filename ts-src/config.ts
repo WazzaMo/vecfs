@@ -3,9 +3,12 @@ import * as path from "path";
 import { homedir } from "os";
 import YAML from "yaml";
 
+export type EmbedderProvider = "fastembed" | "transformers" | "onnx";
+
 export interface VecFSConfig {
   storage: { file: string };
   mcp: { port: number };
+  embedder?: { provider?: EmbedderProvider; model?: string };
 }
 
 const DEFAULT_STORAGE_FILE = "./vecfs-data.jsonl";
@@ -88,8 +91,23 @@ export async function loadConfig(argv: string[] = process.argv): Promise<VecFSCo
         ? parseInt(mcp.port, 10)
         : DEFAULT_MCP_PORT;
 
+  const embedder = (raw.embedder as Record<string, unknown>) ?? {};
+  const validProviders: EmbedderProvider[] = ["fastembed", "transformers", "onnx"];
+  let embedderProvider: EmbedderProvider =
+    typeof embedder.provider === "string" && validProviders.includes(embedder.provider as EmbedderProvider)
+      ? (embedder.provider as EmbedderProvider)
+      : "fastembed";
+  const embedderModel =
+    typeof embedder.model === "string" ? embedder.model : undefined;
+
   if (process.env.VECFS_FILE) {
     storageFile = process.env.VECFS_FILE;
+  }
+  if (process.env.VECFS_EMBEDDER) {
+    const envProvider = process.env.VECFS_EMBEDDER;
+    if (["fastembed", "transformers", "onnx"].includes(envProvider)) {
+      embedderProvider = envProvider as EmbedderProvider;
+    }
   }
   if (process.env.PORT !== undefined && process.env.PORT !== "") {
     const envPort = parseInt(process.env.PORT, 10);
@@ -101,5 +119,6 @@ export async function loadConfig(argv: string[] = process.argv): Promise<VecFSCo
   return {
     storage: { file: storageFile },
     mcp: { port: mcpPort },
+    embedder: { provider: embedderProvider, model: embedderModel },
   };
 }

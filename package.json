@@ -10,6 +10,7 @@
   "files": [
     "dist/",
     "vecfs-memory/",
+    "patches/",
     "README.md",
     "LICENSE"
   ],
@@ -20,7 +21,9 @@
     "test": "vitest run",
     "test:integration": "vitest run --testTimeout 30000 integration.test.ts",
     "test:http": "npm run build && vitest run --testTimeout 30000 http-integration.test.ts",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "postinstall": "patch-package",
+    "test:perf": "vitest run embedder-perf"
   },
   "repository": {
     "type": "git",
@@ -44,6 +47,7 @@
   },
   "homepage": "https://github.com/WazzaMo/vecfs#readme",
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
@@ -56,8 +60,12 @@
     "@types/express": "^5.0.6",
     "@types/node": "^25.2.3",
     "esbuild": "^0.27.3",
+    "patch-package": "^8.0.1",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "tar": "^7.5.8"
   }
 }

@@ -7,7 +7,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 import cors from "cors";
-import { createFastEmbedEmbedder } from "./embedder/index.js";
+import { createEmbedderGetter } from "./embedder/index.js";
 import { loadConfig } from "./config.js";
 import { VecFSStorage } from "./storage.js";
 import { toolDefinitions } from "./tool-schemas.js";
@@ -22,8 +22,10 @@ import { VERSION } from "./version.generated.js";
 async function main() {
   const config = await loadConfig(process.argv);
   const storage = new VecFSStorage(config.storage.file);
-  // Embedder imported as library; createToolHandlers caches it so model loads once and is reused.
-  const embedderGetter = () => createFastEmbedEmbedder();
+  const embedderGetter = createEmbedderGetter(
+    config.embedder?.provider ?? "fastembed",
+    config.embedder?.model,
+  );
   const handlers = createToolHandlers(storage, embedderGetter);
 
   const server = new Server(
