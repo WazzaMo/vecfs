@@ -60,6 +60,14 @@ Reinforcement data must be stored alongside or associated with the relevant vect
 
 The server must handle the transformation of agent queries into the vector space.
 
+### Embedder Configuration
+
+The TypeScript server supports multiple embedders: fastembed (default),
+Transformers.js, and ONNX direct. Configure via `embedder.provider` and
+`embedder.model` in vecfs.yaml, or `VECFS_EMBEDDER` env (fastembed,
+transformers, onnx). All options produce sparse vectors; no high-severity
+npm audit issues when using the default (patched fastembed) or alternatives.
+
 ### Local Performance
 
 Retrieval must be performant enough for real-time interaction on a local machine (e.g., WSL2/Linux/Mac).

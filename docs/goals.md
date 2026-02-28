@@ -42,10 +42,16 @@ The goal is to offer full VecFS capability (embedder and MCP server) in
 each of the three stacks so that users can choose one language and run
 everything without mixing runtimes. Research (see
 `docs/notes/2026-02-24-single-tech-stack-versions.md`) confirms that
-single-stack solutions are feasible: Go already has both components;
-Python has the embedder and can add an MCP server via the official
-Python SDK; TypeScript has the MCP server and can add an embedder via
-fastembed-js or Transformers.js.
+single-stack solutions are feasible:
+
+1.  Go already has both components;
+
+2.  Python has the embedder and can add an MCP server via the official
+    Python SDK;
+
+3.  TypeScript has the MCP server and embedder options: fastembed (default,
+    patched for tar 7.x), Transformers.js, or ONNX direct. Configure via
+    `embedder.provider` in vecfs.yaml or `VECFS_EMBEDDER` env.
 
 # Fundamental principle
 
